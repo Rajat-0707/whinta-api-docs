@@ -23,32 +23,32 @@ servers:
         default: whinta.com
         description: Your Whinta domain
 
-x-tagGroups:
-  - name: Authentication
-    tags:
-      - Authentication Overview
-      - Access Tokens
-      - OAuth 2.0
-      - Authorization Endpoint
-      - Token Endpoint
-      - Refresh Token
-      - Scopes & Permissions
-  - name: Access Token APIs
-    tags:
-      - AT-Introduction
-      - AT-Messages
-      - AT-Contacts
-      - AT-Contact Groups
-      - AT-Automated Replies
-      - AT-Templates
-  - name: OAuth 2.0 APIs
-    tags:
-      - OAuth APIs Introduction
-      - Messages
-      - Conversations
-      - Contacts
-      - Templates
-      - Webhooks
+# x-tagGroups:
+#   - name: Authentication
+#     tags:
+#       - Authentication Overview
+#       - Access Tokens
+#       - OAuth 2.0
+#       - Authorization Endpoint
+#       - Token Endpoint
+#       - Refresh Token
+#       - Scopes & Permissions
+#   - name: Access Token APIs
+#     tags:
+#       - AT-Introduction
+#       - AT-Messages
+#       - AT-Contacts
+#       - AT-Contact Groups
+#       - AT-Automated Replies
+#       - AT-Templates
+#   - name: OAuth 2.0 APIs
+#     tags:
+#       - OAuth APIs Introduction
+#       - Messages
+#       - Conversations
+#       - Contacts
+#       - Templates
+#       - Webhooks
 
 tags:
 
