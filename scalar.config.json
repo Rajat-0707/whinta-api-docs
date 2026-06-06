@@ -15,7 +15,9 @@
         "filepath": "docs/api-reference/openapi.yaml",
         "title": "Whinta API",
         "config": {
-          "layout": "modern"        }
+          "layout": "modern",
+          "defaultOpenAllTags": true
+        }
       }
     }
   }
