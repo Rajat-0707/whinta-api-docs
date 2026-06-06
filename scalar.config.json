@@ -6,18 +6,17 @@
     "description": "Official Whinta API Documentation"
   },
   "siteConfig": {
-    "subdomain": "whinta",
-    "logo": {
-      "darkMode": "https://whinta.com/logo-dark.svg",
-      "lightMode": "https://whinta.com/logo-light.svg"
-    }
+    "subdomain": "whinta"
   },
   "navigation": {
     "routes": {
       "/": {
         "type": "openapi",
         "filepath": "docs/api-reference/openapi.yaml",
-        "title": "Whinta API"
+        "title": "Whinta API",
+        "config": {
+          "layout": "classic"
+        }
       }
     }
   }
