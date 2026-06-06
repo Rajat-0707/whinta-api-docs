@@ -1,2185 +1,3267 @@
-openapi: 3.1.1
+openapi: 3.0.3
+
 info:
-  title: Scalar Galaxy
+  title: Whinta API
+  version: 1.0.7
+  license:
+    name: Proprietary
+    url: https://whinta.com
   description: |
-    The Scalar Galaxy is an example OpenAPI document to test OpenAPI tools and libraries. It's a fictional universe with fictional planets and fictional data. Get all the data for [all planets](#tag/planets/get/planets).
+    The Whinta Public API lets you send WhatsApp messages, manage contacts,
+    automate replies, browse templates, and register webhooks — all on behalf
+    of a Whinta organization.
 
-    ## Resources
+    Whinta exposes two authentication methods: **Access Token** (simple API key
+    for server-to-server use) and **OAuth 2.0** (Authorization Code grant for
+    third-party apps). See the **Authentication** section for setup details.
 
-    * https://github.com/scalar/scalar
-    * https://github.com/OAI/OpenAPI-Specification
-    * https://scalar.com
+servers:
+  - url: https://{host}
+    description: Your Whinta installation
+    variables:
+      host:
+        default: whinta.com
+        description: Your Whinta domain
 
-    ## Markdown Support
+x-tagGroups:
+  - name: Authentication
+    tags:
+      - Authentication Overview
+      - Access Tokens
+      - OAuth 2.0
+      - Authorization Endpoint
+      - Token Endpoint
+      - Refresh Token
+      - Scopes & Permissions
+  - name: Access Token APIs
+    tags:
+      - AT-Introduction
+      - AT-Messages
+      - AT-Contacts
+      - AT-Contact Groups
+      - AT-Automated Replies
+      - AT-Templates
+  - name: OAuth 2.0 APIs
+    tags:
+      - OAuth APIs Introduction
+      - Messages
+      - Conversations
+      - Contacts
+      - Templates
+      - Webhooks
 
-    All descriptions *can* contain ~~tons of text~~ **Markdown**. [If GitHub supports the syntax](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax), chances are we're supporting it, too. You can even create [internal links to reference endpoints](#tag/authentication/post/user/signup).
+tags:
 
-    <details>
-      <summary>Examples</summary>
+  # ── Authentication ──────────────────────────────────────────────────────────
 
-      **Blockquotes**
+  - name: Authentication Overview
+    description: |
+      Whinta exposes two authentication methods. Choose the one that fits your use case:
 
-      > I love OpenAPI. <3
+      | Method | Best for | Base path | Header |
+      |---|---|---|---|
+      | **Access Token** | Server-to-server integrations, scripts, automations | `/api/...` | `Authorization: Bearer <token>` |
+      | **OAuth 2.0** | Third-party apps acting on behalf of a user | `/api/v1/...` | `Authorization: Bearer <token>` (+ optional `X-Organization-UUID`) |
 
-      **Tables**
+      Both methods use a standard `Authorization: Bearer` header. The difference is how
+      the token is issued and what organization it grants access to.
 
-      | Feature          | Availability |
-      | ---------------- | ------------ |
-      | Markdown Support | ✓            |
+      All API responses are JSON. Error responses include `statusCode` and `message`.
+      Paginated responses include a `meta` object with `current_page`, `per_page`, `total`, and `last_page`.
 
-      **Accordion**
+      **Rate limit:** 60 requests per minute per token. Exceeding this returns `429 Too Many Requests`.
 
-      ```html
-      <details>
-        <summary>Using Details Tags</summary>
-        <p>HTML Example</p>
-      </details>
+  - name: Access Tokens
+    description: |
+      Access Tokens are simple API keys tied to your organization.
+      No OAuth flow required — generate one and start making requests.
+
+      ### Generate an Access Token
+
+      1. Log in to your Whinta dashboard.
+      2. Go to **Developer Tools → Access Tokens**.
+      3. Click **Generate API key** and copy the token.
+
+      > Keep this token secret. It grants full API access to your organization.
+
+      ### Using the token
+
+      Pass the token in the `Authorization` header on every request:
+
+      ```http
+      Authorization: Bearer <your_access_token>
       ```
 
-      **Images**
+      No additional headers are required — the token is already bound to your organization.
 
-      Yes, there's support for images, too!
+      ### Example
 
-      ![Empty placeholder image showing the width/height](https://images.placeholders.dev/?width=1280&height=720)
+      ```bash
+      curl -X GET https://whinta.com/api/contacts \
+        -H "Authorization: Bearer wat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      ```
 
-      **Alerts**
+  - name: OAuth 2.0
+    description: |
+      OAuth 2.0 lets third-party applications act on behalf of a Whinta user
+      across one or more organizations, with scoped permissions.
 
-      > [!tip]
-      > You can now use markdown alerts in your descriptions.
+      Whinta uses the **Authorization Code** grant (RFC 6749 §4.1).
 
-    </details>
-  version: 0.5.12
-  contact:
-    name: Scalar Support
-    url: https://scalar.com
-    email: support@scalar.com
-  license:
-    name: MIT
-    url: https://opensource.org/license/MIT
-externalDocs:
-  description: Documentation
-  url: https://github.com/scalar/scalar
-servers:
-  - url: https://galaxy.scalar.com
-  - url: "{protocol}://void.scalar.com/{path}"
-    description: Responds with your request data
-    variables:
-      protocol:
-        enum:
-          - https
-          - http
-        default: https
-      path:
-        default: ""
-security:
-  - bearerAuth: []
-  - basicAuth: []
-  - apiKeyQuery: []
-  - apiKeyHeader: []
-  - apiKeyCookie: []
-  - oAuth2: []
-  - openIdConnect: []
-x-speakeasy-webhooks:
-  security:
-    type: signature
-    headerName: x-signature
-    signatureTextEncoding: base64
-    algorithm: hmac-sha256
-tags:
-  - name: Authentication
-    description: Some endpoints are public, but some require authentication. We
-      provide all the required endpoints to create an account and authorize
-      yourself.
-  - name: Planets
-    description: Everything about planets
-  - name: Celestial Bodies
-    description: Celestial bodies are the planets and satellites in the Scalar Galaxy.
-paths:
-  /planets:
-    get:
-      tags:
-        - Planets
-      summary: Get all planets
-      description: It's easy to say you know them all, but do you really? Retrieve all
-        the planets and check whether you missed one.
-      operationId: getAllData
-      security:
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/limit"
-        - $ref: "#/components/parameters/offset"
-      responses:
-        "200":
-          description: OK
-          headers:
-            X-Request-ID:
-              $ref: "#/components/headers/X-Request-ID"
-            X-Pagination-Total:
-              $ref: "#/components/headers/X-Pagination-Total"
-            X-Pagination-Page:
-              $ref: "#/components/headers/X-Pagination-Page"
-            X-Pagination-Per-Page:
-              $ref: "#/components/headers/X-Pagination-Per-Page"
-            X-Cache-Control:
-              $ref: "#/components/headers/X-Cache-Control"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/Planet"
-                  - $ref: "#/components/schemas/PaginatedResource"
-            application/xml:
-              schema:
-                allOf:
-                  - type: object
-                    xml:
-                      name: planets
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/Planet"
-                  - $ref: "#/components/schemas/PaginatedResource"
-      x-codeSamples:
-        - label: csharp
-          lang: csharp
-          source: |-
-            using Scalar.GalaxyCsharp;
+      ### Quick overview
 
-            var sdk = new GalaxyCsharp();
+      1. **Register an OAuth application** in **Developer Tools → OAuth Clients**.
+         Save your `client_id` and `client_secret`.
 
-            var res = await sdk.Planets.GetAllDataAsync(
-                limit: 10,
-                offset: 0
-            );
+      2. **Redirect the user** to the authorization screen
+         (see **Authorization Endpoint**).
 
-            // handle response
-        - label: typescript
-          lang: typescript
-          source: |-
-            import { GalaxyTypescript } from "@scalar/galaxy-typescript";
+      3. **Exchange the authorization code** for an access token
+         (see **Token Endpoint**).
 
-            const galaxyTypescript = new GalaxyTypescript();
+      4. **Call the API** with the access token:
+         ```http
+         Authorization: Bearer <access_token>
+         ```
+         If your token was not bound to a specific organization during consent, also pass:
+         ```http
+         X-Organization-UUID: <org_uuid>
+         ```
 
-            async function run() {
-              const result = await galaxyTypescript.planets.getAllData({});
+      Access tokens expire after a set period. Use the **Refresh Token** endpoint
+      to obtain a new one without re-authorizing.
 
-              console.log(result);
-            }
+  - name: Authorization Endpoint
+    description: |
+      Redirects the user to Whinta's authorization screen where they grant
+      (or deny) your application access to their organization.
 
-            run();
-    post:
-      tags:
-        - Planets
-      summary: Create a planet
-      description: Time to play god and create a new planet. What do you think? Ah,
-        don't think too much. What could go wrong anyway?
-      operationId: createPlanet
-      callbacks:
-        planetCreated:
-          "{$request.body#/successCallbackUrl}":
-            post:
-              requestBody:
-                description: Information about the newly created planet
-                content:
-                  application/json:
-                    schema:
-                      $ref: "#/components/schemas/Planet"
-              responses:
-                "200":
-                  description: Your server returns this code if it accepts the callback
-                "204":
-                  description: Your server should return this HTTP status code if no longer
-                    interested in further updates
-        planetCreationFailed:
-          "{$request.body#/failureCallbackUrl}":
-            post:
-              requestBody:
-                description: Information about which fields failed to validate
-                content:
-                  application/json:
-                    schema:
-                      $ref: "#/components/schemas/Planet"
-              responses:
-                "200":
-                  description: Your server returns this code if it accepts the failure callback
-                    notification
-        planetExploded:
-          "{$request.body#/successCallbackUrl}":
-            post:
-              requestBody:
-                description: Information about the newly exploded planet
-                content:
-                  application/json:
-                    schema:
-                      $ref: "#/components/schemas/Planet"
-              responses:
-                "200":
-                  description: Your server returns this code if it accepts the planet explosion
-                    callback notification
-      requestBody:
-        description: Planet
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Planet"
-          application/xml:
-            schema:
-              $ref: "#/components/schemas/Planet"
-      responses:
-        "201":
-          description: Created
-          headers:
-            X-Request-ID:
-              $ref: "#/components/headers/X-Request-ID"
-            Location:
-              $ref: "#/components/headers/Location"
-            X-Processing-Time:
-              $ref: "#/components/headers/X-Processing-Time"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Planet"
-            application/xml:
-              schema:
-                $ref: "#/components/schemas/Planet"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-      x-codeSamples:
-        - label: csharp
-          lang: csharp
-          source: >-
-            using Scalar.GalaxyCsharp;
+  - name: Token Endpoint
+    description: |
+      Exchanges an authorization code for an access token and refresh token.
 
-            using Scalar.GalaxyCsharp.Models.Components;
+  - name: Refresh Token
+    description: |
+      Access tokens expire. Use the refresh token to obtain a new access token
+      without requiring the user to re-authorize.
 
-            using System;
+      **Endpoint:** `POST /oauth/token`
 
-            using System.Collections.Generic;
+      ```bash
+      curl -X POST https://whinta.com/oauth/token \
+        -H "Content-Type: application/json" \
+        -d '{
+          "grant_type": "refresh_token",
+          "refresh_token": "<your_refresh_token>",
+          "client_id": "<your_client_id>",
+          "client_secret": "<your_client_secret>",
+          "scope": "chat:read contacts:read"
+        }'
+      ```
 
+      **Response:**
+      ```json
+      {
+        "token_type": "Bearer",
+        "expires_in": 31536000,
+        "access_token": "<new_access_token>",
+        "refresh_token": "<new_refresh_token>"
+      }
+      ```
 
-            var sdk = new GalaxyCsharp();
+      > Each refresh issues a **new refresh token** and invalidates the old one.
+      > Store the new `refresh_token` from every response.
 
+  - name: Scopes & Permissions
+    description: |
+      Scopes limit what an OAuth 2.0 access token can do.
+      Request only the scopes your application actually needs.
 
-            PlanetInput req = new PlanetInput() {
-                Name = "Mars",
-                Description = "The red planet",
-                Type = Scalar.GalaxyCsharp.Models.Components.Type.Terrestrial,
-                HabitabilityIndex = 0.68F,
-                PhysicalProperties = new PhysicalProperties() {
-                    Mass = 0.107F,
-                    Radius = 0.532F,
-                    Gravity = 0.378F,
-                    Temperature = new Temperature() {
-                        Min = 130F,
-                        Max = 308F,
-                        Average = 210F,
-                    },
-                },
-                Atmosphere = new List<Atmosphere>() {
-                    new Atmosphere() {
-                        Compound = "CO2",
-                        Percentage = 95.3F,
-                    },
-                },
-                DiscoveredAt = System.DateTime.Parse("1610-01-07T00:00:00Z"),
-                Image = "https://cdn.scalar.com/photos/mars.jpg",
-                Satellites = new List<SatelliteInput>() {
-                    new SatelliteInput() {
-                        Name = "Phobos",
-                        Description = "Phobos is the larger and innermost of the two moons of Mars.",
-                        Diameter = 22.2F,
-                        Type = SatelliteType.Moon,
-                        Orbit = new Orbit() {
-                            Planet = new Planet() {
-                                Id = 1,
-                                Name = "Mars",
-                                Description = "The red planet",
-                                Type = Scalar.GalaxyCsharp.Models.Components.Type.Terrestrial,
-                                HabitabilityIndex = 0.68F,
-                                PhysicalProperties = new PhysicalProperties() {
-                                    Mass = 0.107F,
-                                    Radius = 0.532F,
-                                    Gravity = 0.378F,
-                                    Temperature = new Temperature() {
-                                        Min = 130F,
-                                        Max = 308F,
-                                        Average = 210F,
-                                    },
-                                },
-                                Atmosphere = new List<Atmosphere>() {
-                                    new Atmosphere() {
-                                        Compound = "CO2",
-                                        Percentage = 95.3F,
-                                    },
-                                },
-                                DiscoveredAt = System.DateTime.Parse("1610-01-07T00:00:00Z"),
-                                Image = "https://cdn.scalar.com/photos/mars.jpg",
-                                Satellites = new List<Satellite>() {
-                                    new Satellite() {
-                                        Id = 1,
-                                        Name = "Phobos",
-                                        Description = "Phobos is the larger and innermost of the two moons of Mars.",
-                                        Diameter = 22.2F,
-                                        Type = SatelliteType.Moon,
-                                        Orbit = new Orbit() {
-                                            Planet = new Planet() {
-                                                Id = 1,
-                                                Name = "Mars",
-                                                Description = "The red planet",
-                                                Type = Scalar.GalaxyCsharp.Models.Components.Type.Terrestrial,
-                                                HabitabilityIndex = 0.68F,
-                                                PhysicalProperties = new PhysicalProperties() {
-                                                    Mass = 0.107F,
-                                                    Radius = 0.532F,
-                                                    Gravity = 0.378F,
-                                                    Temperature = new Temperature() {
-                                                        Min = 130F,
-                                                        Max = 308F,
-                                                        Average = 210F,
-                                                    },
-                                                },
-                                                Atmosphere = new List<Atmosphere>() {
-                                                    new Atmosphere() {
-                                                        Compound = "CO2",
-                                                        Percentage = 95.3F,
-                                                    },
-                                                },
-                                                DiscoveredAt = System.DateTime.Parse("1610-01-07T00:00:00Z"),
-                                                Image = "https://cdn.scalar.com/photos/mars.jpg",
-                                                Creator = new User() {
-                                                    Id = 1,
-                                                    Name = "Marc",
-                                                },
-                                                Tags = new List<string>() {
-                                                    "solar-system",
-                                                    "rocky",
-                                                    "explored",
-                                                },
-                                                LastUpdated = System.DateTime.Parse("2024-01-15T14:30:00Z"),
-                                                SuccessCallbackUrl = "https://example.com/webhook",
-                                                FailureCallbackUrl = "https://example.com/webhook",
-                                            },
-                                            OrbitalPeriod = 0.319F,
-                                            Distance = 9376F,
-                                        },
-                                    },
-                                },
-                                Creator = new User() {
-                                    Id = 1,
-                                    Name = "Marc",
-                                },
-                                Tags = new List<string>() {
-                                    "solar-system",
-                                    "rocky",
-                                    "explored",
-                                },
-                                LastUpdated = System.DateTime.Parse("2024-01-15T14:30:00Z"),
-                                SuccessCallbackUrl = "https://example.com/webhook",
-                                FailureCallbackUrl = "https://example.com/webhook",
-                            },
-                            OrbitalPeriod = 0.319F,
-                            Distance = 9376F,
-                        },
-                    },
-                },
-                Creator = new UserInput() {
-                    Name = "Marc",
-                },
-                Tags = new List<string>() {
-                    "solar-system",
-                    "rocky",
-                    "explored",
-                },
-                SuccessCallbackUrl = "https://example.com/webhook",
-                FailureCallbackUrl = "https://example.com/webhook",
-            };
+      | Scope | Permission |
+      |---|---|
+      | `chat:read` | Read conversations and message history |
+      | `chat:write` | Send messages on behalf of the organization |
+      | `contacts:read` | Read contacts |
+      | `contacts:write` | Create, update, and delete contacts |
+      | `templates:read` | View approved WhatsApp message templates |
+      | `webhooks:read` | View registered webhook endpoints |
+      | `webhooks:write` | Register and delete webhook endpoints |
 
+      > `webhooks:read` and `webhooks:write` require the **Webhooks addon**
+      > to be enabled on the organization's plan.
 
-            var res = await sdk.Planets.CreatePlanetJsonAsync(req);
+      ### Requesting scopes
 
+      Include scopes (space-separated) in the authorization URL:
 
-            // handle response
-        - label: typescript
-          lang: typescript
-          source: >-
-            import { GalaxyTypescript } from "@scalar/galaxy-typescript";
+      ```
+      GET /oauth/authorize
+        ?client_id=<client_id>
+        &redirect_uri=<redirect_uri>
+        &response_type=code
+        &scope=chat:read contacts:read templates:read
+        &state=<random_string>
+      ```
 
+  # ── Access Token API tags ───────────────────────────────────────────────────
 
-            const galaxyTypescript = new GalaxyTypescript();
+  - name: AT-Introduction
+    x-displayName: Introduction
+    description: |
+      The Access Token API provides a simple way to integrate Whinta into your
+      server-side applications, scripts, and automations without any OAuth flow.
 
+      ### Base URL
 
-            async function run() {
-              const result = await galaxyTypescript.planets.createPlanetJson({
-                name: "Mars",
-                description: "The red planet",
-                type: "terrestrial",
-                habitabilityIndex: 0.68,
-                physicalProperties: {
-                  mass: 0.107,
-                  radius: 0.532,
-                  gravity: 0.378,
-                  temperature: {
-                    min: 130,
-                    max: 308,
-                    average: 210,
-                  },
-                },
-                atmosphere: [
-                  {
-                    compound: "CO2",
-                    percentage: 95.3,
-                  },
-                ],
-                discoveredAt: new Date("1610-01-07T00:00:00Z"),
-                image: "https://cdn.scalar.com/photos/mars.jpg",
-                satellites: [
-                  {
-                    name: "Phobos",
-                    description: "Phobos is the larger and innermost of the two moons of Mars.",
-                    diameter: 22.2,
-                    type: "moon",
-                    orbit: {
-                      planet: {
-                        id: 1,
-                        name: "Mars",
-                        description: "The red planet",
-                        type: "terrestrial",
-                        habitabilityIndex: 0.68,
-                        physicalProperties: {
-                          mass: 0.107,
-                          radius: 0.532,
-                          gravity: 0.378,
-                          temperature: {
-                            min: 130,
-                            max: 308,
-                            average: 210,
-                          },
-                        },
-                        atmosphere: [
-                          {
-                            compound: "CO2",
-                            percentage: 95.3,
-                          },
-                        ],
-                        discoveredAt: new Date("1610-01-07T00:00:00Z"),
-                        image: "https://cdn.scalar.com/photos/mars.jpg",
-                        satellites: [
-                          {
-                            id: 1,
-                            name: "Phobos",
-                            description: "Phobos is the larger and innermost of the two moons of Mars.",
-                            diameter: 22.2,
-                            type: "moon",
-                            orbit: {
-                              planet: {
-                                id: 1,
-                                name: "Mars",
-                                description: "The red planet",
-                                type: "terrestrial",
-                                habitabilityIndex: 0.68,
-                                physicalProperties: {
-                                  mass: 0.107,
-                                  radius: 0.532,
-                                  gravity: 0.378,
-                                  temperature: {
-                                    min: 130,
-                                    max: 308,
-                                    average: 210,
-                                  },
-                                },
-                                atmosphere: [
-                                  {
-                                    compound: "CO2",
-                                    percentage: 95.3,
-                                  },
-                                ],
-                                discoveredAt: new Date("1610-01-07T00:00:00Z"),
-                                image: "https://cdn.scalar.com/photos/mars.jpg",
-                                creator: {
-                                  id: 1,
-                                  name: "Marc",
-                                },
-                                tags: [
-                                  "solar-system",
-                                  "rocky",
-                                  "explored",
-                                ],
-                                lastUpdated: new Date("2024-01-15T14:30:00Z"),
-                                successCallbackUrl: "https://example.com/webhook",
-                                failureCallbackUrl: "https://example.com/webhook",
-                              },
-                              orbitalPeriod: 0.319,
-                              distance: 9376,
-                            },
-                          },
-                        ],
-                        creator: {
-                          id: 1,
-                          name: "Marc",
-                        },
-                        tags: [
-                          "solar-system",
-                          "rocky",
-                          "explored",
-                        ],
-                        lastUpdated: new Date("2024-01-15T14:30:00Z"),
-                        successCallbackUrl: "https://example.com/webhook",
-                        failureCallbackUrl: "https://example.com/webhook",
-                      },
-                      orbitalPeriod: 0.319,
-                      distance: 9376,
-                    },
-                  },
-                ],
-                creator: {
-                  name: "Marc",
-                },
-                tags: [
-                  "solar-system",
-                  "rocky",
-                  "explored",
-                ],
-                successCallbackUrl: "https://example.com/webhook",
-                failureCallbackUrl: "https://example.com/webhook",
-              });
+      ```
+      https://whinta.com/api/
+      ```
 
-              console.log(result);
-            }
+      ### Authentication
 
+      Every request must include your Access Token in the `Authorization` header:
 
-            run();
-  /planets/{planetId}:
-    get:
-      tags:
-        - Planets
-      summary: Get a planet
-      description: You'll better learn a little bit more about the planets. It might
-        come in handy once space travel is available for everyone.
-      operationId: getPlanet
-      security:
-        - {}
-      parameters:
-        - $ref: "#/components/parameters/planetId"
-      responses:
-        "200":
-          description: Planet Found
-          headers:
-            X-Request-ID:
-              $ref: "#/components/headers/X-Request-ID"
-            ETag:
-              $ref: "#/components/headers/ETag"
-            Last-Modified:
-              $ref: "#/components/headers/Last-Modified"
-            X-Cache-Control:
-              $ref: "#/components/headers/X-Cache-Control"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Planet"
-            application/xml:
-              schema:
-                $ref: "#/components/schemas/Planet"
-        "404":
-          $ref: "#/components/responses/NotFound"
-      x-codeSamples:
-        - label: csharp
-          lang: csharp
-          source: |-
-            using Scalar.GalaxyCsharp;
+      ```http
+      Authorization: Bearer <your_access_token>
+      ```
 
-            var sdk = new GalaxyCsharp();
+      Generate a token from **Developer Tools → Access Tokens → Generate API key**
+      in your Whinta dashboard. The token is automatically scoped to your organization —
+      no extra headers required.
 
-            var res = await sdk.Planets.GetPlanetAsync(planetId: 1);
+      ### What's available
 
-            // handle response
-        - label: typescript
-          lang: typescript
-          source: |-
-            import { GalaxyTypescript } from "@scalar/galaxy-typescript";
+      | Resource | Endpoints |
+      |---|---|
+      | **Messages** | Send text, template, and media messages |
+      | **Contacts** | Full CRUD |
+      | **Contact Groups** | Full CRUD |
+      | **Automated Replies** | Full CRUD |
+      | **Templates** | List approved templates |
 
-            const galaxyTypescript = new GalaxyTypescript();
+      ### Response format
 
-            async function run() {
-              const result = await galaxyTypescript.planets.getPlanet({
-                planetId: 1,
-              });
+      All responses are JSON. Mutation responses return:
+      ```json
+      { "statusCode": 200, "id": "<uuid>", "message": "Request processed successfully" }
+      ```
+      List responses return paginated data:
+      ```json
+      { "data": [...], "meta": { "current_page": 1, "per_page": 10, "total": 42, "last_page": 5 } }
+      ```
 
-              console.log(result);
-            }
+  - name: AT-Messages
+    x-displayName: Messages
+    description: |
+      Send WhatsApp messages to any phone number using your Access Token.
 
-            run();
-    put:
-      tags:
-        - Planets
-      summary: Update a planet
-      description: Sometimes you make mistakes, that's fine. No worries, you can
-        update all planets.
-      operationId: updatePlanet
-      requestBody:
-        description: New information about the planet
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Planet"
-          application/xml:
-            schema:
-              $ref: "#/components/schemas/Planet"
-      parameters:
-        - $ref: "#/components/parameters/planetId"
-      responses:
-        "200":
-          description: Planet updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Planet"
-            application/xml:
-              schema:
-                $ref: "#/components/schemas/Planet"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-      x-codeSamples:
-        - label: csharp
-          lang: csharp
-          source: >-
-            using Scalar.GalaxyCsharp;
+      Supports plain text (with optional interactive buttons), pre-approved templates,
+      and media attachments (image, video, audio, document).
 
-            using Scalar.GalaxyCsharp.Models.Components;
+      If the recipient phone number is not yet in your contacts, a contact record
+      is created automatically.
+  - name: AT-Contacts
+    x-displayName: Contacts
+    description: Create, read, update, and delete contacts in your organization.
+  - name: AT-Contact Groups
+    x-displayName: Contact Groups
+    description: |
+      Organize contacts into named groups for segmentation and bulk messaging.
 
-            using System;
+      Group names must be unique within the organization.
+  - name: AT-Automated Replies
+    x-displayName: Automated Replies
+    description: |
+      Configure keyword-triggered auto-reply rules.
 
-            using System.Collections.Generic;
+      When an inbound message matches the `trigger` keyword (based on `match_criteria`),
+      Whinta automatically sends the configured response — text, image, or audio.
+  - name: AT-Templates
+    x-displayName: Templates
+    description: |
+      Browse your organization's approved WhatsApp message templates.
 
+      Use the `metadata` field to inspect component structure (variables, header
+      media, buttons) before calling the send-template endpoint.
 
-            var sdk = new GalaxyCsharp();
+  # ── OAuth 2.0 API tags ──────────────────────────────────────────────────────
 
+  - name: OAuth APIs Introduction
+    x-displayName: Introduction
+    description: |
+      The OAuth 2.0 API lets third-party applications send messages, read conversations,
+      and manage contacts on behalf of a Whinta user — with their explicit consent and
+      with scoped permissions they can revoke at any time.
 
-            var res = await sdk.Planets.UpdatePlanetJsonAsync(
-                planetId: 1,
-                planet: new PlanetInput() {
-                    Name = "Mars",
-                    Description = "The red planet",
-                    Type = Scalar.GalaxyCsharp.Models.Components.Type.Terrestrial,
-                    HabitabilityIndex = 0.68F,
-                    PhysicalProperties = new PhysicalProperties() {
-                        Mass = 0.107F,
-                        Radius = 0.532F,
-                        Gravity = 0.378F,
-                        Temperature = new Temperature() {
-                            Min = 130F,
-                            Max = 308F,
-                            Average = 210F,
-                        },
-                    },
-                    Atmosphere = new List<Atmosphere>() {
-                        new Atmosphere() {
-                            Compound = "CO2",
-                            Percentage = 95.3F,
-                        },
-                    },
-                    DiscoveredAt = System.DateTime.Parse("1610-01-07T00:00:00Z"),
-                    Image = "https://cdn.scalar.com/photos/mars.jpg",
-                    Satellites = new List<SatelliteInput>() {
-                        new SatelliteInput() {
-                            Name = "Phobos",
-                            Description = "Phobos is the larger and innermost of the two moons of Mars.",
-                            Diameter = 22.2F,
-                            Type = SatelliteType.Moon,
-                            Orbit = new Orbit() {
-                                Planet = new Planet() {
-                                    Id = 1,
-                                    Name = "Mars",
-                                    Description = "The red planet",
-                                    Type = Scalar.GalaxyCsharp.Models.Components.Type.Terrestrial,
-                                    HabitabilityIndex = 0.68F,
-                                    PhysicalProperties = new PhysicalProperties() {
-                                        Mass = 0.107F,
-                                        Radius = 0.532F,
-                                        Gravity = 0.378F,
-                                        Temperature = new Temperature() {
-                                            Min = 130F,
-                                            Max = 308F,
-                                            Average = 210F,
-                                        },
-                                    },
-                                    Atmosphere = new List<Atmosphere>() {
-                                        new Atmosphere() {
-                                            Compound = "CO2",
-                                            Percentage = 95.3F,
-                                        },
-                                    },
-                                    DiscoveredAt = System.DateTime.Parse("1610-01-07T00:00:00Z"),
-                                    Image = "https://cdn.scalar.com/photos/mars.jpg",
-                                    Satellites = new List<Satellite>() {
-                                        new Satellite() {
-                                            Id = 1,
-                                            Name = "Phobos",
-                                            Description = "Phobos is the larger and innermost of the two moons of Mars.",
-                                            Diameter = 22.2F,
-                                            Type = SatelliteType.Moon,
-                                            Orbit = new Orbit() {
-                                                Planet = new Planet() {
-                                                    Id = 1,
-                                                    Name = "Mars",
-                                                    Description = "The red planet",
-                                                    Type = Scalar.GalaxyCsharp.Models.Components.Type.Terrestrial,
-                                                    HabitabilityIndex = 0.68F,
-                                                    PhysicalProperties = new PhysicalProperties() {
-                                                        Mass = 0.107F,
-                                                        Radius = 0.532F,
-                                                        Gravity = 0.378F,
-                                                        Temperature = new Temperature() {
-                                                            Min = 130F,
-                                                            Max = 308F,
-                                                            Average = 210F,
-                                                        },
-                                                    },
-                                                    Atmosphere = new List<Atmosphere>() {
-                                                        new Atmosphere() {
-                                                            Compound = "CO2",
-                                                            Percentage = 95.3F,
-                                                        },
-                                                    },
-                                                    DiscoveredAt = System.DateTime.Parse("1610-01-07T00:00:00Z"),
-                                                    Image = "https://cdn.scalar.com/photos/mars.jpg",
-                                                    Creator = new User() {
-                                                        Id = 1,
-                                                        Name = "Marc",
-                                                    },
-                                                    Tags = new List<string>() {
-                                                        "solar-system",
-                                                        "rocky",
-                                                        "explored",
-                                                    },
-                                                    LastUpdated = System.DateTime.Parse("2024-01-15T14:30:00Z"),
-                                                    SuccessCallbackUrl = "https://example.com/webhook",
-                                                    FailureCallbackUrl = "https://example.com/webhook",
-                                                },
-                                                OrbitalPeriod = 0.319F,
-                                                Distance = 9376F,
-                                            },
-                                        },
-                                    },
-                                    Creator = new User() {
-                                        Id = 1,
-                                        Name = "Marc",
-                                    },
-                                    Tags = new List<string>() {
-                                        "solar-system",
-                                        "rocky",
-                                        "explored",
-                                    },
-                                    LastUpdated = System.DateTime.Parse("2024-01-15T14:30:00Z"),
-                                    SuccessCallbackUrl = "https://example.com/webhook",
-                                    FailureCallbackUrl = "https://example.com/webhook",
-                                },
-                                OrbitalPeriod = 0.319F,
-                                Distance = 9376F,
-                            },
-                        },
-                    },
-                    Creator = new UserInput() {
-                        Name = "Marc",
-                    },
-                    Tags = new List<string>() {
-                        "solar-system",
-                        "rocky",
-                        "explored",
-                    },
-                    SuccessCallbackUrl = "https://example.com/webhook",
-                    FailureCallbackUrl = "https://example.com/webhook",
-                }
-            );
+      ### Base URL
 
+      ```
+      https://whinta.com/api/v1/
+      ```
 
-            // handle response
-        - label: typescript
-          lang: typescript
-          source: >-
-            import { GalaxyTypescript } from "@scalar/galaxy-typescript";
+      ### Authentication
 
+      Every request requires:
 
-            const galaxyTypescript = new GalaxyTypescript();
+      ```http
+      Authorization: Bearer <oauth_access_token>
+      ```
 
+      The `X-Organization-UUID` header is **optional**. At OAuth consent time the token is
+      bound to the organization the user authorized — so the org is resolved automatically
+      from the token. You only need this header if your token is not org-bound and you want
+      to target a specific organization. If omitted entirely, it falls back to the user's
+      first organization.
 
-            async function run() {
-              const result = await galaxyTypescript.planets.updatePlanetJson({
-                planetId: 1,
-                planet: {
-                  name: "Mars",
-                  description: "The red planet",
-                  type: "terrestrial",
-                  habitabilityIndex: 0.68,
-                  physicalProperties: {
-                    mass: 0.107,
-                    radius: 0.532,
-                    gravity: 0.378,
-                    temperature: {
-                      min: 130,
-                      max: 308,
-                      average: 210,
-                    },
-                  },
-                  atmosphere: [
-                    {
-                      compound: "CO2",
-                      percentage: 95.3,
-                    },
-                  ],
-                  discoveredAt: new Date("1610-01-07T00:00:00Z"),
-                  image: "https://cdn.scalar.com/photos/mars.jpg",
-                  satellites: [
-                    {
-                      name: "Phobos",
-                      description: "Phobos is the larger and innermost of the two moons of Mars.",
-                      diameter: 22.2,
-                      type: "moon",
-                      orbit: {
-                        planet: {
-                          id: 1,
-                          name: "Mars",
-                          description: "The red planet",
-                          type: "terrestrial",
-                          habitabilityIndex: 0.68,
-                          physicalProperties: {
-                            mass: 0.107,
-                            radius: 0.532,
-                            gravity: 0.378,
-                            temperature: {
-                              min: 130,
-                              max: 308,
-                              average: 210,
-                            },
-                          },
-                          atmosphere: [
-                            {
-                              compound: "CO2",
-                              percentage: 95.3,
-                            },
-                          ],
-                          discoveredAt: new Date("1610-01-07T00:00:00Z"),
-                          image: "https://cdn.scalar.com/photos/mars.jpg",
-                          satellites: [
-                            {
-                              id: 1,
-                              name: "Phobos",
-                              description: "Phobos is the larger and innermost of the two moons of Mars.",
-                              diameter: 22.2,
-                              type: "moon",
-                              orbit: {
-                                planet: {
-                                  id: 1,
-                                  name: "Mars",
-                                  description: "The red planet",
-                                  type: "terrestrial",
-                                  habitabilityIndex: 0.68,
-                                  physicalProperties: {
-                                    mass: 0.107,
-                                    radius: 0.532,
-                                    gravity: 0.378,
-                                    temperature: {
-                                      min: 130,
-                                      max: 308,
-                                      average: 210,
-                                    },
-                                  },
-                                  atmosphere: [
-                                    {
-                                      compound: "CO2",
-                                      percentage: 95.3,
-                                    },
-                                  ],
-                                  discoveredAt: new Date("1610-01-07T00:00:00Z"),
-                                  image: "https://cdn.scalar.com/photos/mars.jpg",
-                                  creator: {
-                                    id: 1,
-                                    name: "Marc",
-                                  },
-                                  tags: [
-                                    "solar-system",
-                                    "rocky",
-                                    "explored",
-                                  ],
-                                  lastUpdated: new Date("2024-01-15T14:30:00Z"),
-                                  successCallbackUrl: "https://example.com/webhook",
-                                  failureCallbackUrl: "https://example.com/webhook",
-                                },
-                                orbitalPeriod: 0.319,
-                                distance: 9376,
-                              },
-                            },
-                          ],
-                          creator: {
-                            id: 1,
-                            name: "Marc",
-                          },
-                          tags: [
-                            "solar-system",
-                            "rocky",
-                            "explored",
-                          ],
-                          lastUpdated: new Date("2024-01-15T14:30:00Z"),
-                          successCallbackUrl: "https://example.com/webhook",
-                          failureCallbackUrl: "https://example.com/webhook",
-                        },
-                        orbitalPeriod: 0.319,
-                        distance: 9376,
-                      },
-                    },
-                  ],
-                  creator: {
-                    name: "Marc",
-                  },
-                  tags: [
-                    "solar-system",
-                    "rocky",
-                    "explored",
-                  ],
-                  successCallbackUrl: "https://example.com/webhook",
-                  failureCallbackUrl: "https://example.com/webhook",
-                },
-              });
+      ```http
+      X-Organization-UUID: <organization_uuid>   # optional
+      ```
 
-              console.log(result);
-            }
+      > Passing a UUID that doesn't match the token's bound org returns `403 Forbidden`.
 
+      ### Scopes
 
-            run();
-    delete:
-      tags:
-        - Planets
-      summary: Delete a planet
-      operationId: deletePlanet
-      description: This endpoint was used to delete planets. Unfortunately, that
-        caused a lot of trouble for planets with life. So, this endpoint is now
-        deprecated and should not be used anymore.
-      x-scalar-stability: experimental
-      parameters:
-        - $ref: "#/components/parameters/planetId"
-      responses:
-        "204":
-          description: No Content
-        "404":
-          $ref: "#/components/responses/NotFound"
-      x-codeSamples:
-        - label: csharp
-          lang: csharp
-          source: |-
-            using Scalar.GalaxyCsharp;
+      Each endpoint requires one or more OAuth scopes. Scopes are requested during the
+      authorization flow — see **Scopes & Permissions** for the full list.
 
-            var sdk = new GalaxyCsharp();
+      ### What's available
 
-            var res = await sdk.Planets.DeletePlanetAsync(planetId: 1);
+      | Resource | Scopes required |
+      |---|---|
+      | **Messages** | `chat:write` (send), `chat:read` (read) |
+      | **Conversations** | `chat:read` |
+      | **Contacts** | `contacts:read` / `contacts:write` |
+      | **Templates** | `templates:read` |
+      | **Webhooks** | `webhooks:read` / `webhooks:write` _(addon required)_ |
 
-            // handle response
-        - label: typescript
-          lang: typescript
-          source: |-
-            import { GalaxyTypescript } from "@scalar/galaxy-typescript";
+      ### Response format
 
-            const galaxyTypescript = new GalaxyTypescript();
+      All responses are JSON. Successful responses wrap data in a `data` key.
+      Error responses include `statusCode` and a human-readable `message`.
+      Paginated responses include a `meta` object with `current_page`, `per_page`, `total`, and `last_page`.
 
-            async function run() {
-              await galaxyTypescript.planets.deletePlanet({
-                planetId: 1,
-              });
+  - name: Messages
+    description: |
+      Send WhatsApp messages on behalf of a user's organization using an OAuth 2.0 token.
 
+      Supports plain text (with optional interactive buttons), pre-approved templates,
+      and media attachments (image, video, audio, document).
 
-            }
+      **Required scopes:** `chat:write` for sending; `chat:read` for reading.
+  - name: Conversations
+    description: |
+      Read conversation history and manage read state for a user's organization.
 
-            run();
-  /planets/{planetId}/image:
-    post:
-      tags:
-        - Planets
-      summary: Upload an image to a planet
-      description: Got a crazy good photo of a planet? Share it with the world!
-      operationId: uploadImage
-      parameters:
-        - $ref: "#/components/parameters/planetId"
-      requestBody:
-        description: Image to upload
-        content:
-          multipart/form-data:
-            schema:
+      A "conversation" in Whinta is the full message thread with a single contact.
+
+      **Required scope:** `chat:read`
+  - name: Contacts
+    description: |
+      Create, read, update, and delete contacts in a user's organization.
+
+      **Required scopes:** `contacts:read` for listing/viewing; `contacts:write` for mutations.
+  - name: Templates
+    description: |
+      Browse the approved WhatsApp message templates for a user's organization.
+
+      **Required scope:** `templates:read`
+  - name: Webhooks
+    description: |
+      Register HTTPS callback URLs to receive real-time message events.
+
+      **Requires the Webhooks addon** to be enabled on the organization's plan.
+
+      **Events delivered:**
+      - `message.received` — inbound message arrived from a contact
+      - `message.sent` — outbound message was dispatched
+      - `message.status.update` — delivery status changed (sent → delivered → read / failed)
+
+      **Required scopes:** `webhooks:read` for listing; `webhooks:write` for registering/deleting.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Components
+# ─────────────────────────────────────────────────────────────────────────────
+
+components:
+
+  securitySchemes:
+    accessToken:
+      type: http
+      scheme: bearer
+      description: |
+        **Access Token** — generated from Developer Tools → Access Tokens → Generate API key.
+        The token is scoped to your organization automatically.
+        Pass as `Authorization: Bearer <token>`.
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        **OAuth2 Bearer token** — obtained via the Authorization Code grant.
+        Pass as `Authorization: Bearer <token>`. The org is resolved automatically
+        from the token binding set at consent time. `X-Organization-UUID` is only
+        needed for unbound tokens targeting a non-default organization.
+
+  parameters:
+    XOrgUUID:
+      name: X-Organization-UUID
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+        example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      description: |
+        UUID of the target organization. Optional — the token's org binding (set
+        at consent time) is used automatically. Only needed for unbound tokens
+        targeting a specific non-default organization. Passing a UUID that doesn't
+        match the token's bound org returns `403 Forbidden`.
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number (1-based)
+    PerPage:
+      name: per_page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Number of results per page (max 100)
+
+  responses:
+    SubscriptionError:
+      description: Subscription inactive or plan limit reached
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            inactive:
+              summary: Subscription inactive
+              value:
+                statusCode: 403
+                message: "Please renew or subscribe to a plan to continue!"
+            limit_reached:
+              summary: Contact limit reached
+              value:
+                statusCode: 403
+                message: "You have reached your limit of contacts. Please upgrade your account to add more!"
+    WhatsAppApiError:
+      description: WhatsApp Cloud API rejected the request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            statusCode: 502
+            message: "Message failed to send: (#131026) The recipient phone number is not a WhatsApp user."
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            statusCode: 404
+            message: "Not found."
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              errors:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: string
+          example:
+            message: "The phone field is required."
+            errors:
+              phone:
+                - "The phone field is required."
+    Unauthorized:
+      description: Missing or invalid Bearer token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+          examples:
+            missing_token:
+              summary: No token provided
+              value:
+                error: "Unauthorized. Bearer Token is missing."
+            invalid_token:
+              summary: Token not found or revoked
+              value:
+                error: "Unauthorized. Invalid Bearer Token."
+
+  schemas:
+
+    PaginationMeta:
+      type: object
+      required: [current_page, per_page, total, last_page]
+      properties:
+        current_page:
+          type: integer
+          example: 1
+        per_page:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 143
+        last_page:
+          type: integer
+          example: 8
+        from:
+          type: integer
+          nullable: true
+          description: 1-based index of the first item on this page
+          example: 1
+        to:
+          type: integer
+          nullable: true
+          description: 1-based index of the last item on this page
+          example: 20
+        path:
+          type: string
+          description: Base URL of the resource (without page query params)
+          example: "https://app.whinta.com/api/contacts"
+
+    PaginationLinks:
+      type: object
+      description: Pagination navigation links included in every list response
+      properties:
+        first:
+          type: string
+          nullable: true
+          description: URL of the first page
+          example: "https://app.whinta.com/api/contacts?page=1"
+        last:
+          type: string
+          nullable: true
+          description: URL of the last page
+          example: "https://app.whinta.com/api/contacts?page=8"
+        prev:
+          type: string
+          nullable: true
+          description: URL of the previous page, or null on the first page
+          example: null
+        next:
+          type: string
+          nullable: true
+          description: URL of the next page, or null on the last page
+          example: "https://app.whinta.com/api/contacts?page=2"
+
+    ErrorResponse:
+      type: object
+      required: [statusCode, message]
+      properties:
+        statusCode:
+          type: integer
+          example: 403
+        message:
+          type: string
+          example: "Unauthorized."
+
+    # ── Contact ───────────────────────────────────────────────────────────────
+
+    Contact:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        first_name:
+          type: string
+          example: "Priya"
+        last_name:
+          type: string
+          nullable: true
+          example: "Sharma"
+        full_name:
+          type: string
+          description: Computed first_name + last_name
+          example: "Priya Sharma"
+        phone:
+          type: string
+          description: E.164 formatted phone number
+          example: "+919876543210"
+        formatted_phone_number:
+          type: string
+          description: Internationally formatted phone number
+          example: "+91 98765 43210"
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: "priya@example.com"
+        avatar:
+          type: string
+          nullable: true
+          description: URL of the contact's profile picture, or null if not set
+          example: "https://cdn.example.com/avatars/priya.jpg"
+        subscription_status:
+          type: string
+          nullable: true
+          enum: [subscribed, unsubscribed]
+          description: WhatsApp marketing subscription status
+          example: "subscribed"
+        is_favorite:
+          type: boolean
+          description: Whether the contact is marked as a favourite
+          example: false
+        unread_messages:
+          type: integer
+          description: Number of unread inbound messages from this contact
+          example: 2
+        groups:
+          type: array
+          description: Names of the contact groups this contact belongs to
+          items:
+            type: string
+          example: ["VIP Customers", "Newsletter"]
+        label:
+          nullable: true
+          description: Label assigned to this contact, or null
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 3
+            uuid:
+              type: string
+              format: uuid
+              example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            name:
+              type: string
+              example: "Hot Lead"
+            color:
+              type: string
+              description: Hex color code for the label
+              example: "#FF5733"
+        created_at:
+          type: string
+          description: Creation time in the organization's configured timezone
+          example: "2024-06-01 10:30:00"
+        updated_at:
+          type: string
+          description: Last update time in the organization's configured timezone
+          example: "2024-06-01 10:30:00"
+
+    # ── Conversation ──────────────────────────────────────────────────────────
+
+    Conversation:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        name:
+          type: string
+          description: Contact's full name
+          example: "Priya Sharma"
+        phone:
+          type: string
+          example: "+919876543210"
+        email:
+          type: string
+          nullable: true
+          example: "priya@example.com"
+        last_message:
+          type: string
+          nullable: true
+          description: |
+            Human-readable preview of the last message. Examples:
+            - Plain text: `"Hi, I need help with my order."`
+            - Template: `"📋 order_confirmation"`
+            - Image: `"📷 Image"`
+            - Document: `"📎 Invoice-1234.pdf"`
+          example: "Hi, I need help with my order."
+        last_message_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2024-06-05T14:22:00.000Z"
+        unread_count:
+          type: integer
+          description: Number of unread inbound messages from this contact
+          example: 3
+
+    # ── Template ──────────────────────────────────────────────────────────────
+
+    Template:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          example: "4fa85f64-5717-4562-b3fc-2c963f66afa7"
+        metadata:
+          type: object
+          description: |
+            Full template definition as returned by the Meta API. Contains:
+            - `name` — template identifier
+            - `language` — BCP-47 language code
+            - `category` — `MARKETING`, `UTILITY`, or `AUTHENTICATION`
+            - `components` — array of HEADER, BODY, FOOTER, and BUTTONS components
+          example:
+            name: "order_confirmation"
+            language: "en"
+            category: "UTILITY"
+            components:
+              - type: "BODY"
+                text: "Hi {{1}}, your order {{2}} has been confirmed."
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-05-20T08:00:00.000Z"
+
+    # ── Contact Group ─────────────────────────────────────────────────────────
+
+    ContactGroup:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          example: "5fa85f64-5717-4562-b3fc-2c963f66afa8"
+        name:
+          type: string
+          description: Group name — unique within the organization
+          example: "VIP Customers"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-06-01T10:00:00.000Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-06-01T10:00:00.000Z"
+
+    # ── Automated Reply ───────────────────────────────────────────────────────
+
+    AutomatedReply:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          example: "7fa85f64-5717-4562-b3fc-2c963f66afaa"
+        name:
+          type: string
+          description: Internal label for this rule
+          example: "Greeting reply"
+        trigger:
+          type: string
+          description: Keyword that triggers this reply
+          example: "hello"
+        match_criteria:
+          type: string
+          enum: [exact match, contains]
+          description: |
+            - `exact match` — inbound message must be exactly the trigger word
+            - `contains` — inbound message just needs to contain the trigger word
+          example: "contains"
+        metadata:
+          type: object
+          description: Response definition
+          properties:
+            type:
+              type: string
+              enum: [text, image, audio]
+              example: "text"
+            data:
               type: object
               properties:
-                image:
+                text:
                   type: string
-                  format: binary
-                  description: The image file to upload
-                  examples:
-                    - "@mars.jpg"
-                    - "@jupiter.png"
+                  description: Present when type is `text`
+                  example: "Hi! How can I help you?"
+                file:
+                  type: object
+                  description: Present when type is `image` or `audio`
+                  properties:
+                    name:
+                      type: string
+                    location:
+                      type: string
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-06-01T10:00:00.000Z"
+
+    # ── Standard operation response ───────────────────────────────────────────
+
+    OperationResponse:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          example: 200
+        id:
+          type: string
+          format: uuid
+          description: UUID of the created / updated / deleted resource
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        message:
+          type: string
+          example: "Request processed successfully"
+
+    # ── Webhook ───────────────────────────────────────────────────────────────
+
+    Webhook:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          example: "8fa85f64-5717-4562-b3fc-2c963f66afab"
+        url:
+          type: string
+          format: uri
+          example: "https://myapp.example.com/webhooks/whinta"
+        events:
+          type: array
+          items:
+            type: string
+            enum:
+              - message.received
+              - message.sent
+              - message.status.update
+          example: ["message.received", "message.status.update"]
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-06-01T09:00:00.000Z"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Default security
+# ─────────────────────────────────────────────────────────────────────────────
+
+security:
+  - bearerAuth: []
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Paths — Public API v1
+# ─────────────────────────────────────────────────────────────────────────────
+
+paths:
+
+  # ── OAuth 2.0 Auth Endpoints ──────────────────────────────────────────────────
+
+  /oauth/authorize:
+    get:
+      tags: [Authorization Endpoint]
+      operationId: oauthAuthorize
+      summary: Authorization endpoint
+      description: |
+        Redirects the user's browser to Whinta's authorization screen.
+        The user is prompted to grant (or deny) the requested scopes to your application.
+
+        On approval, Whinta redirects to your `redirect_uri` with a one-time `code`
+        and your original `state` value as query parameters:
+
+        ```
+        https://yourapp.example.com/callback?code=<auth_code>&state=<your_state>
+        ```
+
+        Pass `code` to the **Token Endpoint** to exchange it for an access token.
+
+        > This endpoint is a browser redirect — do **not** call it with server-side HTTP.
+        > Open it in a browser or a WebView.
+      parameters:
+        - name: client_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Your OAuth application's client ID
+          example: "9c1a2b3d-0000-0000-0000-000000000001"
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+          description: The callback URL registered with your OAuth client
+          example: "https://yourapp.example.com/callback"
+        - name: response_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [code]
+          description: Must be `code` for the Authorization Code grant
+          example: "code"
+        - name: scope
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Space-separated list of scopes to request
+          example: "chat:read contacts:read templates:read"
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+          description: |
+            A random, unguessable string your app generates. Whinta echoes it back
+            in the redirect. Verify it matches to prevent CSRF attacks.
+          example: "x7k2m9p1q4"
       responses:
-        "200":
-          $ref: "#/components/responses/ImageUploaded"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-      x-codeSamples:
-        - label: csharp
-          lang: csharp
-          source: |-
-            using Scalar.GalaxyCsharp;
-            using Scalar.GalaxyCsharp.Models.Requests;
-            using System.IO;
+        '302':
+          description: |
+            Redirect to your `redirect_uri` with `code` and `state` on success,
+            or with `error` and `error_description` on denial/failure.
+        '401':
+          description: Invalid or unknown `client_id`
 
-            var sdk = new GalaxyCsharp();
-
-            var res = await sdk.Planets.UploadImageAsync(
-                planetId: 1,
-                requestBody: new UploadImageRequestBody() {
-                    Image = new Image() {
-                        FileName = "example.file",
-                        Content = File.ReadAllBytes("example.file"),
-                    },
-                }
-            );
-
-            // handle response
-        - label: typescript
-          lang: typescript
-          source: |-
-            import { GalaxyTypescript } from "@scalar/galaxy-typescript";
-            import { openAsBlob } from "node:fs";
-
-            const galaxyTypescript = new GalaxyTypescript();
-
-            async function run() {
-              const result = await galaxyTypescript.planets.uploadImage({
-                planetId: 1,
-                requestBody: {
-                  image: await openAsBlob("example.file"),
-                },
-              });
-
-              console.log(result);
-            }
-
-            run();
-  /celestial-bodies:
+  /oauth/token:
     post:
-      tags:
-        - Celestial Bodies
-      summary: Create a celestial body
-      operationId: createCelestialBody
+      tags: [Token Endpoint]
+      operationId: oauthToken
+      summary: Token endpoint
+      description: |
+        Exchanges an authorization code for an access token and refresh token.
+
+        Set `Content-Type: application/json` and pass the body fields shown below.
+        The `client_secret` must match the secret generated when you created the OAuth client.
+
+        The returned `access_token` is valid for **15 days** by default.
+        The `refresh_token` is valid for **30 days**.
+        Use the **Refresh Token** flow to get a new token after expiry without
+        re-authorizing the user.
       requestBody:
-        description: Celestial body to create
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CelestialBody"
+              type: object
+              required: [grant_type, client_id, client_secret, redirect_uri, code]
+              properties:
+                grant_type:
+                  type: string
+                  enum: [authorization_code]
+                  description: Must be `authorization_code`
+                  example: "authorization_code"
+                client_id:
+                  type: string
+                  description: Your OAuth application's client ID
+                  example: "9c1a2b3d-0000-0000-0000-000000000001"
+                client_secret:
+                  type: string
+                  description: Your OAuth application's client secret
+                  example: "your_client_secret"
+                redirect_uri:
+                  type: string
+                  format: uri
+                  description: The same redirect URI used in the authorization request
+                  example: "https://yourapp.example.com/callback"
+                code:
+                  type: string
+                  description: The authorization code received at your redirect URI
+                  example: "def502009a3b..."
+            example:
+              grant_type: "authorization_code"
+              client_id: "9c1a2b3d-0000-0000-0000-000000000001"
+              client_secret: "your_client_secret"
+              redirect_uri: "https://yourapp.example.com/callback"
+              code: "def502009a3b..."
       responses:
-        "201":
-          description: Celestial body created
+        '200':
+          description: Token issued successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CelestialBody"
-      x-codeSamples:
-        - label: csharp
-          lang: csharp
-          source: |-
-            using Scalar.GalaxyCsharp;
-            using Scalar.GalaxyCsharp.Models.Components;
+                type: object
+                properties:
+                  token_type:
+                    type: string
+                    example: "Bearer"
+                  expires_in:
+                    type: integer
+                    description: Seconds until the access token expires (15 days)
+                    example: 1296000
+                  access_token:
+                    type: string
+                    description: Bearer token to use in `Authorization` header
+                  refresh_token:
+                    type: string
+                    description: Token used to obtain a new access token after expiry
+              example:
+                token_type: "Bearer"
+                expires_in: 1296000
+                access_token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..."
+                refresh_token: "def502004a9b..."
+        '400':
+          description: Invalid grant — code expired, already used, or mismatched redirect URI
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "invalid_request"
+                  error_description:
+                    type: string
+                    example: "The authorization code has expired."
+        '401':
+          description: Invalid client credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "invalid_client"
 
-            var sdk = new GalaxyCsharp();
+  # ── Messages ─────────────────────────────────────────────────────────────────
 
-            CelestialBodyInput req = CelestialBodyInput.CreateMoon(
-                new SatelliteInput1() {
-                    Name = "Phobos",
-                    Type = SatelliteType.Moon,
-                }
-            );
-
-            var res = await sdk.CelestialBodies.CreateCelestialBodyAsync(req);
-
-            // handle response
-        - label: typescript
-          lang: typescript
-          source: >-
-            import { GalaxyTypescript } from "@scalar/galaxy-typescript";
-
-
-            const galaxyTypescript = new GalaxyTypescript();
-
-
-            async function run() {
-              const result = await galaxyTypescript.celestialBodies.createCelestialBody({
-                name: "Phobos",
-                type: "moon",
-              });
-
-              console.log(result);
-            }
-
-
-            run();
-  /user/signup:
+  /api/v1/messages/send:
     post:
-      tags:
-        - Authentication
-      summary: Create a user
-      description: Time to create a user account, eh?
-      operationId: createUser
+      tags: [Messages]
+      operationId: sendTextMessage
+      summary: Send a text message
+      description: |
+        Send a plain text WhatsApp message to a contact.
+
+        If `buttons` are included the message is upgraded to an **interactive buttons**
+        message automatically.
+
+        The contact is **auto-created** if no matching phone number exists for the
+        organization — pass `first_name` / `last_name` / `email` to populate the new record.
       security:
-        - {}
+        - bearerAuth: [chat:write]
+      parameters:
+        - $ref: '#/components/parameters/XOrgUUID'
       requestBody:
-        description: User to create
+        required: true
         content:
           application/json:
             schema:
-              allOf:
-                - $ref: "#/components/schemas/User"
-                - $ref: "#/components/schemas/Credentials"
+              type: object
+              required: [phone, message]
+              properties:
+                phone:
+                  type: string
+                  description: Recipient phone number — with or without leading `+`. Normalized to E.164 internally.
+                  example: "+919876543210"
+                message:
+                  type: string
+                  maxLength: 4096
+                  description: Message body text
+                  example: "Hello! Your order has been shipped and will arrive in 2 days."
+                header:
+                  type: string
+                  description: Header text — only used for interactive button messages
+                  example: "Order Update"
+                footer:
+                  type: string
+                  description: Footer text — only used for interactive button messages
+                  example: "Reply anytime"
+                buttons:
+                  type: array
+                  description: |
+                    Quick-reply or URL buttons. Providing this field upgrades the message
+                    to an interactive type. Follow the WhatsApp interactive object format.
+                  items:
+                    type: object
+                first_name:
+                  type: string
+                  maxLength: 128
+                  description: First name for auto-created contact
+                last_name:
+                  type: string
+                  maxLength: 128
+                  description: Last name for auto-created contact
+                email:
+                  type: string
+                  format: email
+                  description: Email for auto-created contact
             examples:
-              Marc:
+              plain_text:
+                summary: Plain text message
                 value:
-                  name: Marc
-                  email: marc@scalar.com
-                  password: i-love-scalar
-              Cam:
+                  phone: "+919876543210"
+                  message: "Hi! Your order #1234 has been shipped and will arrive in 2 days."
+              interactive_buttons:
+                summary: Interactive buttons message
                 value:
-                  name: Cam
-                  email: cam@scalar.com
-                  password: scalar-is-cool
-              Hans:
-                value:
-                  name: Hans
-                  email: hans@scalar.com
-                  password: 5c4l4r
-          application/xml:
-            schema:
-              allOf:
-                - $ref: "#/components/schemas/User"
-                - $ref: "#/components/schemas/Credentials"
-            examples:
-              Marc:
-                value:
-                  name: Marc
-                  email: marc@scalar.com
-                  password: i-love-scalar
-              Cam:
-                value:
-                  name: Cam
-                  email: cam@scalar.com
-                  password: scalar-is-cool
-              Hans:
-                value:
-                  name: Hans
-                  email: hans@scalar.com
-                  password: 5c4l4r
+                  phone: "+919876543210"
+                  message: "Would you like to confirm your appointment for tomorrow at 3 PM?"
+                  header: "Appointment Reminder"
+                  footer: "Tap a button to respond"
+                  buttons:
+                    - type: reply
+                      reply:
+                        id: confirm
+                        title: "✅ Confirm"
+                    - type: reply
+                      reply:
+                        id: cancel
+                        title: "❌ Cancel"
       responses:
-        "201":
-          description: User account created successfully
-          headers:
-            X-Request-ID:
-              $ref: "#/components/headers/X-Request-ID"
-            Location:
-              $ref: "#/components/headers/Location"
-            X-Processing-Time:
-              $ref: "#/components/headers/X-Processing-Time"
+        '200':
+          description: Message sent successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/User"
-            application/xml:
-              schema:
-                $ref: "#/components/schemas/User"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "422":
-          $ref: "#/components/responses/UnprocessableEntity"
-      x-codeSamples:
-        - label: csharp
-          lang: csharp
-          source: |-
-            using Scalar.GalaxyCsharp;
-            using Scalar.GalaxyCsharp.Models.Requests;
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: object
+                    description: Raw success response from WhatsApp Cloud API
+        '403':
+          $ref: '#/components/responses/SubscriptionError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '502':
+          $ref: '#/components/responses/WhatsAppApiError'
 
-            var sdk = new GalaxyCsharp();
-
-            CreateUserJsonRequestBody req = new CreateUserJsonRequestBody() {
-                Name = "Marc",
-                Email = "marc@scalar.com",
-                Password = "i-love-scalar",
-            };
-
-            var res = await sdk.Authentication.CreateUserJsonAsync(req);
-
-            // handle response
-        - label: typescript
-          lang: typescript
-          source: >-
-            import { GalaxyTypescript } from "@scalar/galaxy-typescript";
-
-
-            const galaxyTypescript = new GalaxyTypescript();
-
-
-            async function run() {
-              const result = await galaxyTypescript.authentication.createUserJson({
-                name: "Marc",
-                email: "marc@scalar.com",
-                password: "i-love-scalar",
-              });
-
-              console.log(result);
-            }
-
-
-            run();
-  /auth/token:
+  /api/v1/messages/send/template:
     post:
-      tags:
-        - Authentication
-      summary: Get a token
-      description: Yeah, this is the boring security stuff. Just get your super secret
-        token and move on.
-      operationId: getToken
+      tags: [Messages]
+      operationId: sendTemplateMessage
+      summary: Send a template message
+      description: |
+        Send a pre-approved WhatsApp message template to a contact.
+
+        The template must exist in the organization's approved templates
+        (browse them with `GET /api/v1/templates`).
+
+        ---
+
+        ### Body variables
+
+        If the template body contains `{{1}}`, `{{2}}`, etc., pass values **in order**
+        in `template.body_params`. The array length must exactly match the variable count
+        — a mismatch returns 422.
+
+        ### Header media
+
+        Templates with an **IMAGE**, **VIDEO**, or **DOCUMENT** header require
+        `template.header_media.url`. Passing it when not needed returns 422.
+        For DOCUMENT headers also pass `template.header_media.filename`.
+
+        ### Dynamic URL buttons
+
+        Buttons whose URL contains `{{1}}` require a suffix value in
+        `template.button_params`. Provide the 0-based button `index` and the
+        URL `value` to append. All dynamic URL buttons must be covered.
       security:
-        - {}
+        - bearerAuth: [chat:write]
+      parameters:
+        - $ref: '#/components/parameters/XOrgUUID'
       requestBody:
-        description: Body for credentials to authenticate a user
+        required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Credentials"
-          application/xml:
-            schema:
-              $ref: "#/components/schemas/Credentials"
+              type: object
+              required: [phone, template]
+              properties:
+                phone:
+                  type: string
+                  description: Recipient phone number — with or without leading `+`
+                  example: "+919876543210"
+                template:
+                  type: object
+                  required: [name, language]
+                  properties:
+                    name:
+                      type: string
+                      description: Template name as registered in Meta Business Manager
+                      example: "order_confirmation"
+                    language:
+                      type: string
+                      description: BCP-47 language code (e.g. `en`, `en_US`, `hi`)
+                      example: "en"
+                    body_params:
+                      type: array
+                      description: |
+                        Ordered values for `{{1}}`, `{{2}}`, … placeholders in the template body.
+                        Must match the exact variable count of the template.
+                      items:
+                        type: string
+                      example: ["John Doe", "ORD-12345", "₹499"]
+                    header_media:
+                      type: object
+                      description: Required for IMAGE / VIDEO / DOCUMENT header templates
+                      required: [url]
+                      properties:
+                        url:
+                          type: string
+                          format: uri
+                          maxLength: 2048
+                          description: Publicly accessible media URL (no private/localhost URLs)
+                          example: "https://cdn.example.com/banner.jpg"
+                        filename:
+                          type: string
+                          maxLength: 255
+                          description: Display filename — required for DOCUMENT headers
+                          example: "Invoice-1234.pdf"
+                    button_params:
+                      type: array
+                      description: URL suffix values for dynamic URL buttons (those whose URL contains `{{1}}`)
+                      items:
+                        type: object
+                        required: [index, value]
+                        properties:
+                          index:
+                            type: integer
+                            minimum: 0
+                            description: 0-based position of the button in the template's buttons array
+                            example: 0
+                          value:
+                            type: string
+                            maxLength: 2048
+                            description: URL suffix appended to the button's static base URL
+                            example: "ORD-12345"
+                first_name:
+                  type: string
+                  maxLength: 128
+                  description: First name for auto-created contact
+                last_name:
+                  type: string
+                  maxLength: 128
+                  description: Last name for auto-created contact
+                email:
+                  type: string
+                  format: email
+                  description: Email for auto-created contact
+            examples:
+              simple_body_vars:
+                summary: Template with body variables
+                value:
+                  phone: "+919876543210"
+                  template:
+                    name: "order_confirmation"
+                    language: "en"
+                    body_params: ["John Doe", "ORD-12345", "₹499"]
+              image_header:
+                summary: Template with image header
+                value:
+                  phone: "+919876543210"
+                  template:
+                    name: "product_launch"
+                    language: "en"
+                    header_media:
+                      url: "https://cdn.example.com/product.jpg"
+                    body_params: ["Summer Sale 2024"]
+              dynamic_url_button:
+                summary: Template with dynamic URL button
+                value:
+                  phone: "+919876543210"
+                  template:
+                    name: "track_order"
+                    language: "en"
+                    body_params: ["ORD-12345"]
+                    button_params:
+                      - index: 0
+                        value: "ORD-12345"
+              document_header:
+                summary: Template with document header
+                value:
+                  phone: "+919876543210"
+                  template:
+                    name: "invoice_ready"
+                    language: "en"
+                    header_media:
+                      url: "https://cdn.example.com/invoice-1234.pdf"
+                      filename: "Invoice-1234.pdf"
       responses:
-        "201":
-          description: Token Created
-          headers:
-            X-Request-ID:
-              $ref: "#/components/headers/X-Request-ID"
-            X-RateLimit-Limit:
-              $ref: "#/components/headers/X-RateLimit-Limit"
-            X-RateLimit-Remaining:
-              $ref: "#/components/headers/X-RateLimit-Remaining"
-            X-RateLimit-Reset:
-              $ref: "#/components/headers/X-RateLimit-Reset"
+        '200':
+          description: Template message sent successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Token"
-            application/xml:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: object
+                    description: Raw success response from WhatsApp Cloud API
+        '403':
+          $ref: '#/components/responses/SubscriptionError'
+        '422':
+          description: |
+            Template validation failed. Common causes:
+            - Template name not found in this organization
+            - Wrong number of `body_params` for the template's variable count
+            - `header_media` missing when template has a media header (or provided when not needed)
+            - `button_params` missing or incorrect for dynamic URL buttons
+          content:
+            application/json:
               schema:
-                $ref: "#/components/schemas/Token"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "429":
-          $ref: "#/components/responses/TooManyRequests"
-      x-codeSamples:
-        - label: csharp
-          lang: csharp
-          source: |-
-            using Scalar.GalaxyCsharp;
-            using Scalar.GalaxyCsharp.Models.Components;
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                template_not_found:
+                  summary: Template not found
+                  value:
+                    statusCode: 422
+                    message: "Template 'order_confirmation' not found in your organization."
+                wrong_body_params:
+                  summary: Wrong variable count
+                  value:
+                    statusCode: 422
+                    message: "Template 'order_confirmation' expects 3 body variable(s), got 2."
+                missing_header_media:
+                  summary: Missing media URL
+                  value:
+                    statusCode: 422
+                    message: "Template 'product_launch' has a IMAGE header. Provide a publicly accessible media URL in template.header_media.url."
+        '502':
+          $ref: '#/components/responses/WhatsAppApiError'
 
-            var sdk = new GalaxyCsharp();
+  /api/v1/messages/send/media:
+    post:
+      tags: [Messages]
+      operationId: sendMediaMessage
+      summary: Send a media message
+      description: |
+        Send an image, video, audio, or document message to a contact.
 
-            Credentials req = new Credentials() {
-                Email = "marc@scalar.com",
-                Password = "i-love-scalar",
-            };
+        The `media_url` must be a publicly accessible HTTPS URL. Private network
+        addresses (localhost, 192.168.x.x, 10.x.x.x, etc.) are rejected.
+      security:
+        - bearerAuth: [chat:write]
+      parameters:
+        - $ref: '#/components/parameters/XOrgUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, media_type, media_url, file_name]
+              properties:
+                phone:
+                  type: string
+                  description: Recipient phone number — with or without leading `+`
+                  example: "+919876543210"
+                media_type:
+                  type: string
+                  enum: [image, video, audio, document]
+                  description: Type of media to send
+                media_url:
+                  type: string
+                  format: uri
+                  maxLength: 2048
+                  description: Publicly accessible URL of the media file
+                  example: "https://cdn.example.com/invoice-1234.pdf"
+                file_name:
+                  type: string
+                  maxLength: 255
+                  description: Display filename shown in chat (important for documents)
+                  example: "Invoice-1234.pdf"
+                caption:
+                  type: string
+                  description: Optional caption displayed below the media
+                  example: "Please find your invoice attached."
+                first_name:
+                  type: string
+                  maxLength: 128
+                  description: First name for auto-created contact
+                last_name:
+                  type: string
+                  maxLength: 128
+                  description: Last name for auto-created contact
+                email:
+                  type: string
+                  format: email
+                  description: Email for auto-created contact
+            examples:
+              send_document:
+                summary: Send a PDF document
+                value:
+                  phone: "+919876543210"
+                  media_type: "document"
+                  media_url: "https://cdn.example.com/invoice-1234.pdf"
+                  file_name: "Invoice-1234.pdf"
+                  caption: "Your invoice for order #1234."
+              send_image:
+                summary: Send an image
+                value:
+                  phone: "+919876543210"
+                  media_type: "image"
+                  media_url: "https://cdn.example.com/product-banner.jpg"
+                  file_name: "product-banner.jpg"
+                  caption: "Check out our new collection!"
+      responses:
+        '200':
+          description: Media message sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: object
+                    description: Raw success response from WhatsApp Cloud API
+        '403':
+          $ref: '#/components/responses/SubscriptionError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '502':
+          $ref: '#/components/responses/WhatsAppApiError'
 
-            var res = await sdk.Authentication.GetTokenJsonAsync(req);
+  # ── Conversations ─────────────────────────────────────────────────────────────
 
-            // handle response
-        - label: typescript
-          lang: typescript
-          source: >-
-            import { GalaxyTypescript } from "@scalar/galaxy-typescript";
-
-
-            const galaxyTypescript = new GalaxyTypescript();
-
-
-            async function run() {
-              const result = await galaxyTypescript.authentication.getTokenJson({
-                email: "marc@scalar.com",
-                password: "i-love-scalar",
-              });
-
-              console.log(result);
-            }
-
-
-            run();
-  /me:
+  /api/v1/conversations:
     get:
-      tags:
-        - Authentication
-      summary: Get authenticated user
-      description: Find yourself they say. That's what you can do here.
-      operationId: getMe
+      tags: [Conversations]
+      operationId: listConversations
+      summary: List conversations
+      description: |
+        Returns all contacts that have at least one chat message, ordered by most
+        recent activity. Each item includes the latest message preview and unread
+        inbound message count.
       security:
-        - basicAuth: []
-        - oAuth2:
-            - read:account
-        - bearerAuth: []
-        - apiKeyHeader: []
-        - apiKeyQuery: []
-      responses:
-        "200":
-          description: Authenticated user information retrieved successfully
-          headers:
-            X-Request-ID:
-              $ref: "#/components/headers/X-Request-ID"
-            ETag:
-              $ref: "#/components/headers/ETag"
-            Last-Modified:
-              $ref: "#/components/headers/Last-Modified"
-            X-Cache-Control:
-              $ref: "#/components/headers/X-Cache-Control"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-            application/xml:
-              schema:
-                $ref: "#/components/schemas/User"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-      x-codeSamples:
-        - label: csharp
-          lang: csharp
-          source: |-
-            using Scalar.GalaxyCsharp;
-
-            var sdk = new GalaxyCsharp();
-
-            var res = await sdk.Authentication.GetMeAsync();
-
-            // handle response
-        - label: typescript
-          lang: typescript
-          source: |-
-            import { GalaxyTypescript } from "@scalar/galaxy-typescript";
-
-            const galaxyTypescript = new GalaxyTypescript();
-
-            async function run() {
-              const result = await galaxyTypescript.authentication.getMe();
-
-              console.log(result);
-            }
-
-            run();
-webhooks:
-  newPlanet:
-    post:
-      tags:
-        - Planets
-      requestBody:
-        description: Information about a new planet
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Planet"
-      responses:
-        "200":
-          description: Return a 200 status to indicate that the data was received
-            successfully
-components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      description: JWT Bearer token authentication
-    basicAuth:
-      type: http
-      scheme: basic
-      description: Basic HTTP authentication
-    apiKeyHeader:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: API key request header
-    apiKeyQuery:
-      type: apiKey
-      in: query
-      name: api_key
-      description: API key query parameter
-    apiKeyCookie:
-      type: apiKey
-      in: cookie
-      name: api_key
-      description: API key browser cookie
-    oAuth2:
-      type: oauth2
-      description: OAuth 2.0 authentication
-      flows:
-        authorizationCode:
-          authorizationUrl: https://galaxy.scalar.com/oauth/authorize
-          tokenUrl: https://galaxy.scalar.com/oauth/token
-          scopes:
-            read:account: read your account information
-            write:planets: modify planets in your account
-            read:planets: read your planets
-        clientCredentials:
-          tokenUrl: https://galaxy.scalar.com/oauth/token
-          scopes:
-            read:account: read your account information
-            write:planets: modify planets in your account
-            read:planets: read your planets
-        implicit:
-          authorizationUrl: https://galaxy.scalar.com/oauth/authorize
-          scopes:
-            read:account: read your account information
-            write:planets: modify planets in your account
-            read:planets: read your planets
-        password:
-          tokenUrl: https://galaxy.scalar.com/oauth/token
-          scopes:
-            read:account: read your account information
-            write:planets: modify planets in your account
-            read:planets: read your planets
-    openIdConnect:
-      type: openIdConnect
-      openIdConnectUrl: https://galaxy.scalar.com/.well-known/openid-configuration
-      description: OpenID Connect Authentication
-  parameters:
-    planetId:
-      name: planetId
-      description: The ID of the planet to get
-      in: path
-      required: true
-      schema:
-        type: integer
-        format: int64
-        examples:
-          - 1
-    limit:
-      name: limit
-      description: The number of items to return
-      in: query
-      required: false
-      schema:
-        type: integer
-        format: int64
-        default: 10
-    offset:
-      name: offset
-      description: The number of items to skip before starting to collect the result set
-      in: query
-      required: false
-      schema:
-        type: integer
-        format: int64
-        default: 0
-  headers:
-    X-RateLimit-Limit:
-      description: The number of allowed requests in the current period
-      schema:
-        type: integer
-        example: 100
-    X-RateLimit-Remaining:
-      description: The number of remaining requests in the current period
-      schema:
-        type: integer
-        example: 95
-    X-RateLimit-Reset:
-      description: The number of seconds left in the current period
-      schema:
-        type: integer
-        example: 3600
-    X-Request-ID:
-      description: Unique identifier for the request
-      schema:
-        type: string
-        format: uuid
-        example: 123e4567-e89b-12d3-a456-426614174000
-    X-Pagination-Total:
-      description: Total number of items available
-      schema:
-        type: integer
-        example: 1000
-    X-Pagination-Page:
-      description: Current page number
-      schema:
-        type: integer
-        example: 1
-    X-Pagination-Per-Page:
-      description: Number of items per page
-      schema:
-        type: integer
-        example: 10
-    X-Cache-Control:
-      description: Cache control directives
-      schema:
-        type: string
-        example: max-age=3600, public
-    ETag:
-      description: Entity tag for caching
-      schema:
-        type: string
-        example: '"33a64df551"'
-    Last-Modified:
-      description: The last modification date of the resource
-      schema:
-        type: string
-        format: date-time
-        example: 2023-12-01T12:00:00Z
-    Location:
-      description: The URL of the newly created resource
-      schema:
-        type: string
-        format: uri
-        example: https://galaxy.scalar.com/planets/123
-    X-Processing-Time:
-      description: The time taken to process the request in milliseconds
-      schema:
-        type: integer
-        example: 150
-  responses:
-    ImageUploaded:
-      description: Image uploaded
-      headers:
-        X-Request-ID:
-          $ref: "#/components/headers/X-Request-ID"
-        X-Cache-Control:
-          $ref: "#/components/headers/X-Cache-Control"
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ImageUploadedMessage"
-        application/xml:
-          schema:
-            $ref: "#/components/schemas/ImageUploadedMessage"
-    BadRequest:
-      description: Bad Request
-      headers:
-        X-Request-ID:
-          $ref: "#/components/headers/X-Request-ID"
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/BadRequestError"
-        application/xml:
-          schema:
-            $ref: "#/components/schemas/BadRequestError"
-    Forbidden:
-      description: Forbidden
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ForbiddenError"
-        application/xml:
-          schema:
-            $ref: "#/components/schemas/ForbiddenError"
-    NotFound:
-      description: Not Found
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/NotFoundError"
-        application/xml:
-          schema:
-            $ref: "#/components/schemas/NotFoundError"
-    Unauthorized:
-      description: Unauthorized
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/UnauthorizedError"
-        application/xml:
-          schema:
-            $ref: "#/components/schemas/UnauthorizedError"
-    Conflict:
-      description: Conflict
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Conflict"
-        application/xml:
-          schema:
-            $ref: "#/components/schemas/Conflict"
-    UnprocessableEntity:
-      description: Unprocessable Entity
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/UnprocessableEntity"
-        application/xml:
-          schema:
-            $ref: "#/components/schemas/UnprocessableEntity"
-    TooManyRequests:
-      description: Too Many Requests
-      headers:
-        X-Request-ID:
-          $ref: "#/components/headers/X-Request-ID"
-        X-RateLimit-Limit:
-          $ref: "#/components/headers/X-RateLimit-Limit"
-        X-RateLimit-Remaining:
-          $ref: "#/components/headers/X-RateLimit-Remaining"
-        X-RateLimit-Reset:
-          $ref: "#/components/headers/X-RateLimit-Reset"
-        Retry-After:
-          description: The number of seconds to wait before retrying
+        - bearerAuth: [chat:read]
+      parameters:
+        - $ref: '#/components/parameters/XOrgUUID'
+        - name: per_page
+          in: query
           schema:
             type: integer
-            example: 60
-      content:
-        application/json:
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Results per page (max 100)
+        - name: page
+          in: query
           schema:
-            $ref: "#/components/schemas/TooManyRequestsError"
-        application/xml:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number
+      responses:
+        '200':
+          description: Paginated conversation list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+              example:
+                data:
+                  - uuid: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    name: "Priya Sharma"
+                    phone: "+919876543210"
+                    email: "priya@example.com"
+                    last_message: "Thanks, I got my order!"
+                    last_message_at: "2024-06-05T14:22:00.000Z"
+                    unread_count: 0
+                  - uuid: "c1d2e3f4-0000-0000-0000-000000000002"
+                    name: "Rahul Verma"
+                    phone: "+919812345678"
+                    email: null
+                    last_message: "📋 order_confirmation"
+                    last_message_at: "2024-06-05T13:10:00.000Z"
+                    unread_count: 2
+                meta:
+                  current_page: 1
+                  per_page: 20
+                  total: 87
+                  last_page: 5
+
+  /api/v1/conversations/{id}:
+    get:
+      tags: [Conversations]
+      operationId: getConversation
+      summary: Get a conversation
+      description: Returns a single conversation — contact details, latest message preview, and unread count.
+      security:
+        - bearerAuth: [chat:read]
+      parameters:
+        - $ref: '#/components/parameters/XOrgUUID'
+        - name: id
+          in: path
+          required: true
           schema:
-            $ref: "#/components/schemas/TooManyRequestsError"
-  schemas:
-    User:
-      description: A user
-      type: object
-      xml:
-        name: user
-      properties:
-        id:
-          type: integer
-          format: int64
-          readOnly: true
-          examples:
-            - 1
-        name:
-          type: string
-          examples:
-            - Marc
-            - Cam
-            - Hans
-    Credentials:
-      description: Credentials to authenticate a user
-      type: object
-      required:
-        - email
-        - password
-      properties:
-        email:
-          type: string
-          format: email
-          examples:
-            - marc@scalar.com
-            - cam@scalar.com
-            - hans@scalar.com
-        password:
-          type: string
-          writeOnly: true
-          examples:
-            - i-love-scalar
-            - i-love-oss
-            - qwerty123
-    Token:
-      description: A token to authenticate a user
-      type: object
-      properties:
-        token:
-          type: string
-          examples:
-            - eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
-    CelestialBody:
-      oneOf:
-        - $ref: "#/components/schemas/Planet"
-        - $ref: "#/components/schemas/Satellite"
-      discriminator:
-        propertyName: type
-        mapping:
-          terrestrial: "#/components/schemas/Planet"
-          gas_giant: "#/components/schemas/Planet"
-          ice_giant: "#/components/schemas/Planet"
-          dwarf: "#/components/schemas/Planet"
-          super_earth: "#/components/schemas/Planet"
-          moon: "#/components/schemas/Satellite"
-          asteroid: "#/components/schemas/Satellite"
-          comet: "#/components/schemas/Satellite"
-      description: A celestial body which can be either a planet or a satellite
-    Planet:
-      description: A planet in the Scalar Galaxy
-      type: object
-      required:
-        - id
-        - name
-      additionalProperties: false
-      xml:
-        name: planet
-      properties:
-        id:
-          type: integer
-          format: int64
-          readOnly: true
-          examples:
-            - 1
-          x-variable: planetId
-        name:
-          type: string
-          examples:
-            - Mars
-            - Jupiter
-            - HD 40307g
-        description:
-          type:
-            - string
-            - "null"
-          examples:
-            - The red planet
-            - A gas giant with a great red spot
-        type:
-          type: string
-          enum:
-            - terrestrial
-            - gas_giant
-            - ice_giant
-            - dwarf
-            - super_earth
-          x-enum-varnames:
-            - Terrestrial
-            - GasGiant
-            - IceGiant
-            - Dwarf
-            - SuperEarth
-          x-enum-descriptions:
-            terrestrial: Rocky planets with solid surfaces, like Earth and Mars
-            gas_giant: Large planets composed mainly of hydrogen and helium, like Jupiter
-              and Saturn
-            ice_giant: Planets composed of water, ammonia, and methane ices, like Uranus and
-              Neptune
-            dwarf: Small planetary bodies that don't meet full planet criteria, like Pluto
-            super_earth: Rocky planets larger than Earth but smaller than gas giants
-          examples:
-            - terrestrial
-        habitabilityIndex:
-          type: number
-          format: float
-          minimum: 0
-          maximum: 1
-          description: A score from 0 to 1 indicating potential habitability
-          examples:
-            - 0.68
-        physicalProperties:
-          type: object
-          additionalProperties:
-            x-additionalPropertiesName: measurement
-            type: number
-            format: float
-            description: Additional physical measurements for the planet
-          properties:
-            mass:
-              type: number
-              format: float
-              exclusiveMinimum: 0
-              description: Mass in Earth masses (must be greater than 0)
-              examples:
-                - 0.107
-            radius:
-              type: number
-              format: float
-              exclusiveMinimum: 0
-              description: Radius in Earth radii (must be greater than 0)
-              examples:
-                - 0.532
-            gravity:
-              type: number
-              format: float
-              description: Surface gravity in Earth g
-              examples:
-                - 0.378
-            temperature:
-              type: object
-              additionalProperties:
-                x-additionalPropertiesName: temperatureMetric
-                type: number
-                format: float
-                description: Additional temperature-related measurements in Kelvin
-              properties:
-                min:
-                  type: number
-                  format: float
-                  description: Minimum temperature in Kelvin
-                  examples:
-                    - 130
-                max:
-                  type: number
-                  format: float
-                  description: Maximum temperature in Kelvin
-                  examples:
-                    - 308
-                average:
-                  type: number
-                  format: float
-                  description: Average temperature in Kelvin
-                  examples:
-                    - 210
-        atmosphere:
-          type: array
-          description: Atmospheric composition
-          items:
-            type: object
-            additionalProperties:
-              x-additionalPropertiesName: atmosphericData
-              type: string
-              description: Additional atmospheric composition data
-            properties:
-              compound:
-                type: string
-                examples:
-                  - CO2
-                  - N2
-              percentage:
-                type: number
-                format: float
-                exclusiveMaximum: 100
-                examples:
-                  - 95.3
-        discoveredAt:
-          type: string
-          format: date-time
-          examples:
-            - 1610-01-07T00:00:00Z
-        image:
-          type:
-            - string
-            - "null"
-          examples:
-            - https://cdn.scalar.com/photos/mars.jpg
-        satellites:
-          type: array
-          items:
-            $ref: "#/components/schemas/Satellite"
-        creator:
-          $ref: "#/components/schemas/User"
-        tags:
-          type: array
-          items:
             type: string
-          examples:
-            - - solar-system
-              - rocky
-              - explored
-        lastUpdated:
-          type: string
-          format: date-time
-          readOnly: true
-          examples:
-            - 2024-01-15T14:30:00Z
-        successCallbackUrl:
-          type: string
-          format: uri
-          description: URL which gets invoked upon a successful operation
-          examples:
-            - https://example.com/webhook
-        failureCallbackUrl:
-          type: string
-          format: uri
-          description: URL which gets invoked upon a failed operation
-          examples:
-            - https://example.com/webhook
-    Satellite:
-      description: Every satellite in the Scalar Galaxy
-      type: object
-      required:
-        - name
-      properties:
-        id:
-          type: integer
-          format: int64
-          readOnly: true
-          examples:
-            - 1
-        name:
-          type: string
-          examples:
-            - Phobos
-        description:
-          type:
-            - string
-            - "null"
-          examples:
-            - Phobos is the larger and innermost of the two moons of Mars.
-        diameter:
-          type: number
-          format: float
-          description: Diameter in kilometers
-          examples:
-            - 22.2
-        type:
-          type: string
-          enum:
-            - moon
-            - asteroid
-            - comet
-          x-enum-varnames:
-            - Moon
-            - Asteroid
-            - Comet
-          x-enum-descriptions:
-            moon: Natural satellites that orbit planets
-            asteroid: Rocky objects that orbit the sun, typically found in the asteroid belt
-            comet: Icy bodies that release gas when approaching the sun, creating visible
-              tails
-          examples:
-            - moon
-        orbit:
-          type: object
-          properties:
-            planet:
-              $ref: "#/components/schemas/Planet"
-            orbitalPeriod:
-              type: number
-              format: float
-              description: Orbital period in Earth days
-              examples:
-                - 0.319
-            distance:
-              type: number
-              format: float
-              description: Average distance from the planet in kilometers
-              examples:
-                - 9376
-    PaginatedResource:
-      description: A paginated resource
-      type: object
-      properties:
-        meta:
-          type: object
-          properties:
-            limit:
-              type: integer
-              format: int64
-              examples:
-                - 10
-            offset:
-              type: integer
-              format: int64
-              examples:
-                - 0
-            total:
-              type: integer
-              format: int64
-              examples:
-                - 100
-            next:
-              type:
-                - string
-                - "null"
-              examples:
-                - /planets?limit=10&offset=10
-    ImageUploadedMessage:
-      x-scalar-ignore: true
-      description: Message about an image upload
-      type: object
-      properties:
-        message:
-          type: string
-          examples:
-            - Image uploaded successfully
-        imageUrl:
-          type: string
-          description: The URL where the uploaded image can be accessed
-          examples:
-            - https://cdn.scalar.com/images/8f47c132-9d1f-4f83-b5a4-91db5ee757ab.jpg
-        uploadedAt:
-          type: string
-          format: date-time
-          description: Timestamp when the image was uploaded
-          examples:
-            - 2024-01-15T14:30:00Z
-        fileSize:
-          type: integer
-          description: Size of the uploaded image in bytes
-          examples:
-            - 1048576
-        mimeType:
-          type: string
-          description: The content type of the uploaded image
-          examples:
-            - image/jpeg
-            - image/png
-    BadRequestError:
-      x-scalar-ignore: true
-      description: RFC 7807 (https://datatracker.ietf.org/doc/html/rfc7807)
-      type: object
-      properties:
-        type:
-          type: string
-          examples:
-            - https://example.com/errors/bad-request
-        title:
-          type: string
-          examples:
-            - Bad Request
-        status:
-          type: integer
-          format: int64
-          examples:
-            - 400
-        detail:
-          type: string
-          examples:
-            - The request was invalid.
-    ForbiddenError:
-      x-scalar-ignore: true
-      description: Error response for forbidden access (RFC 7807). Returned when the
-        user does not have permission to access the requested resource.
-      type: object
-      properties:
-        type:
-          type: string
-          examples:
-            - https://example.com/errors/forbidden
-        title:
-          type: string
-          examples:
-            - Forbidden
-        status:
-          type: integer
-          format: int64
-          examples:
-            - 403
-        detail:
-          type: string
-          examples:
-            - You are not authorized to access this resource.
-    NotFoundError:
-      x-scalar-ignore: true
-      description: Error response for resource not found (RFC 7807). Returned when the
-        requested resource does not exist.
-      type: object
-      properties:
-        type:
-          type: string
-          examples:
-            - https://example.com/errors/not-found
-        title:
-          type: string
-          examples:
-            - Not Found
-        status:
-          type: integer
-          format: int64
-          examples:
-            - 404
-        detail:
-          type: string
-          examples:
-            - The resource you are trying to access does not exist.
-    UnauthorizedError:
-      x-scalar-ignore: true
-      description: Error response for unauthorized access (RFC 7807). Returned when
-        authentication is required or has failed.
-      type: object
-      properties:
-        type:
-          type: string
-          examples:
-            - https://example.com/errors/not-found
-        title:
-          type: string
-          examples:
-            - Unauthorized
-        status:
-          type: integer
-          format: int64
-          examples:
-            - 401
-        detail:
-          type: string
-          examples:
-            - You are not authorized to access this resource.
-    Conflict:
-      x-scalar-ignore: true
-      description: Error response for resource conflicts (RFC 7807). Returned when the
-        request conflicts with the current state of the resource.
-      type: object
-      properties:
-        type:
-          type: string
-          examples:
-            - https://example.com/errors/conflict
-        title:
-          type: string
-          examples:
-            - Conflict
-        status:
-          type: integer
-          format: int64
-          examples:
-            - 409
-        detail:
-          type: string
-          examples:
-            - The resource you are trying to access is in conflict.
-    UnprocessableEntity:
-      x-scalar-ignore: true
-      description: Error response for unprocessable entity (RFC 7807). Returned when
-        the request is well-formed but contains semantic errors.
-      type: object
-      properties:
-        type:
-          type: string
-          examples:
-            - https://example.com/errors/unprocessable-entity
-        title:
-          type: string
-          examples:
-            - Unprocessable Entity
-        status:
-          type: integer
-          format: int64
-          examples:
-            - 422
-        detail:
-          type: string
-          examples:
-            - The request was invalid.
-    TooManyRequestsError:
-      x-scalar-ignore: true
-      description: Error response for rate limiting (RFC 7807). Returned when the
-        client has exceeded the rate limit for requests.
-      type: object
-      properties:
-        type:
-          type: string
-          examples:
-            - https://example.com/errors/too-many-requests
-        title:
-          type: string
-          examples:
-            - Too Many Requests
-        status:
-          type: integer
-          format: int64
-          examples:
-            - 429
-        detail:
-          type: string
-          examples:
-            - Rate limit exceeded. Please try again later.
+            format: uuid
+          description: Contact UUID
+      responses:
+        '200':
+          description: Conversation details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Conversation'
+              example:
+                data:
+                  uuid: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  name: "Priya Sharma"
+                  phone: "+919876543210"
+                  email: "priya@example.com"
+                  last_message: "Thanks, I got my order!"
+                  last_message_at: "2024-06-05T14:22:00.000Z"
+                  unread_count: 0
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/conversations/{id}/messages:
+    get:
+      tags: [Conversations]
+      operationId: listConversationMessages
+      summary: List messages in a conversation
+      description: |
+        Returns paginated message history for a contact in **chronological order**
+        (oldest first within each page).
+
+        Default `per_page` is 20, maximum is 50. Use `page` to navigate back through
+        older messages.
+      security:
+        - bearerAuth: [chat:read]
+      parameters:
+        - $ref: '#/components/parameters/XOrgUUID'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Contact UUID
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+          description: Results per page (max 50)
+      responses:
+        '200':
+          description: Paginated message list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 4821
+                        type:
+                          type: string
+                          description: Entity type (always `"chat"` currently)
+                          example: "chat"
+                        created_at:
+                          type: string
+                          format: date-time
+                          example: "2024-06-05T14:22:00.000Z"
+                        entity:
+                          type: object
+                          nullable: true
+                          description: Hydrated chat object with media, user, and delivery log relations
+                  meta:
+                    allOf:
+                      - $ref: '#/components/schemas/PaginationMeta'
+                      - type: object
+                        properties:
+                          has_more:
+                            type: boolean
+                            description: Whether more pages exist after this one
+                            example: true
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/conversations/{id}/mark-read:
+    post:
+      tags: [Conversations]
+      operationId: markConversationRead
+      summary: Mark conversation as read
+      description: Marks all unread **inbound** messages in this conversation as read. Has no effect if there are no unread messages.
+      security:
+        - bearerAuth: [chat:write]
+      parameters:
+        - $ref: '#/components/parameters/XOrgUUID'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Contact UUID
+      responses:
+        '200':
+          description: Messages marked as read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "Messages marked as read."
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Contacts ──────────────────────────────────────────────────────────────────
+
+  /api/v1/contacts:
+    get:
+      tags: [Contacts]
+      operationId: listContacts
+      summary: List contacts
+      description: |
+        Returns a paginated list of contacts for the organization, ordered by most
+        recently created.
+
+        Use `search` to filter across `first_name`, `last_name`, `phone`, and `email`
+        (case-insensitive).
+      security:
+        - bearerAuth: [contacts:read]
+      parameters:
+        - $ref: '#/components/parameters/XOrgUUID'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - name: search
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+          description: Search term — matches first name, last name, phone, or email
+          example: "priya"
+      responses:
+        '200':
+          description: Paginated contact list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Contact'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+              example:
+                data:
+                  - uuid: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    first_name: "Priya"
+                    last_name: "Sharma"
+                    name: "Priya Sharma"
+                    phone: "+919876543210"
+                    email: "priya@example.com"
+                    created_at: "2024-06-01T10:30:00.000Z"
+                    updated_at: "2024-06-01T10:30:00.000Z"
+                meta:
+                  current_page: 1
+                  per_page: 20
+                  total: 143
+                  last_page: 8
+
+    post:
+      tags: [Contacts]
+      operationId: createContact
+      summary: Create a contact
+      description: |
+        Creates a new contact. The phone number is normalized to E.164 and must be
+        unique within the organization — duplicate phone numbers return a 422.
+
+        Returns 403 if the subscription is inactive or the plan's contact limit is reached.
+      security:
+        - bearerAuth: [contacts:write]
+      parameters:
+        - $ref: '#/components/parameters/XOrgUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, phone]
+              properties:
+                first_name:
+                  type: string
+                  maxLength: 128
+                  example: "Priya"
+                last_name:
+                  type: string
+                  maxLength: 128
+                  example: "Sharma"
+                phone:
+                  type: string
+                  description: Phone number with or without leading `+`. Stored as E.164.
+                  example: "+919876543210"
+                email:
+                  type: string
+                  format: email
+                  nullable: true
+                  example: "priya@example.com"
+            example:
+              first_name: "Priya"
+              last_name: "Sharma"
+              phone: "+919876543210"
+              email: "priya@example.com"
+      responses:
+        '201':
+          description: Contact created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 201
+                  message:
+                    type: string
+                    example: "Contact created."
+                  data:
+                    $ref: '#/components/schemas/Contact'
+        '403':
+          $ref: '#/components/responses/SubscriptionError'
+        '422':
+          description: Phone number already exists for this organization
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 422
+                message: "A contact with this phone number already exists."
+
+  /api/v1/contacts/{uuid}:
+    get:
+      tags: [Contacts]
+      operationId: getContact
+      summary: Get a contact
+      security:
+        - bearerAuth: [contacts:read]
+      parameters:
+        - $ref: '#/components/parameters/XOrgUUID'
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Contact UUID
+      responses:
+        '200':
+          description: Contact details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Contact'
+              example:
+                data:
+                  uuid: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  first_name: "Priya"
+                  last_name: "Sharma"
+                  name: "Priya Sharma"
+                  phone: "+919876543210"
+                  email: "priya@example.com"
+                  created_at: "2024-06-01T10:30:00.000Z"
+                  updated_at: "2024-06-01T10:30:00.000Z"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Contacts]
+      operationId: updateContact
+      summary: Update a contact
+      security:
+        - bearerAuth: [contacts:write]
+      parameters:
+        - $ref: '#/components/parameters/XOrgUUID'
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Contact UUID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, phone]
+              properties:
+                first_name:
+                  type: string
+                  maxLength: 128
+                  example: "Priya"
+                last_name:
+                  type: string
+                  maxLength: 128
+                  example: "Sharma"
+                phone:
+                  type: string
+                  description: Phone number. Normalized to E.164.
+                  example: "+919876543210"
+                email:
+                  type: string
+                  format: email
+                  nullable: true
+                  example: "priya.new@example.com"
+            example:
+              first_name: "Priya"
+              last_name: "Sharma"
+              phone: "+919876543210"
+              email: "priya.new@example.com"
+      responses:
+        '200':
+          description: Contact updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "Contact updated."
+                  data:
+                    $ref: '#/components/schemas/Contact'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Contacts]
+      operationId: deleteContact
+      summary: Delete a contact
+      description: |
+        Soft-deletes the contact. The contact's message history is retained and
+        will still appear in conversation history.
+      security:
+        - bearerAuth: [contacts:write]
+      parameters:
+        - $ref: '#/components/parameters/XOrgUUID'
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Contact UUID
+      responses:
+        '200':
+          description: Contact deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "Contact deleted."
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Templates ─────────────────────────────────────────────────────────────────
+
+  /api/v1/templates:
+    get:
+      tags: [Templates]
+      operationId: listTemplates
+      summary: List templates
+      description: |
+        Returns all approved WhatsApp message templates for the organization.
+
+        Use the `metadata.components` array to discover:
+        - **Variable count** — count `{{N}}` patterns in the BODY component text
+        - **Header type** — check `components[].format` on the HEADER component
+          (`TEXT`, `IMAGE`, `VIDEO`, `DOCUMENT`)
+        - **Button type** — check `components[].buttons[].type`
+          (`QUICK_REPLY`, `URL`, `PHONE_NUMBER`)
+
+        This is useful for building the correct `template.body_params` and
+        `template.button_params` before calling `POST /api/v1/messages/send/template`.
+      security:
+        - bearerAuth: [templates:read]
+      parameters:
+        - $ref: '#/components/parameters/XOrgUUID'
+        - $ref: '#/components/parameters/Page'
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Results per page (max 100)
+      responses:
+        '200':
+          description: Paginated template list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Template'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+              example:
+                data:
+                  - uuid: "4fa85f64-5717-4562-b3fc-2c963f66afa7"
+                    metadata:
+                      name: "order_confirmation"
+                      language: "en"
+                      category: "UTILITY"
+                      components:
+                        - type: "HEADER"
+                          format: "TEXT"
+                          text: "Order Confirmed"
+                        - type: "BODY"
+                          text: "Hi {{1}}, your order {{2}} for ₹{{3}} has been confirmed."
+                        - type: "FOOTER"
+                          text: "Thank you for shopping with us!"
+                    updated_at: "2024-05-20T08:00:00.000Z"
+                meta:
+                  current_page: 1
+                  per_page: 20
+                  total: 12
+                  last_page: 1
+
+  # ── Webhooks ──────────────────────────────────────────────────────────────────
+
+  /api/v1/webhooks:
+    get:
+      tags: [Webhooks]
+      operationId: listWebhooks
+      summary: List webhooks
+      description: |
+        List webhook URLs registered for the organization that are subscribed to
+        chat events.
+
+        > **Requires the Webhooks addon** to be enabled on the organization's plan.
+        > Returns 403 if the addon is not active.
+      security:
+        - bearerAuth: [webhooks:read]
+      parameters:
+        - $ref: '#/components/parameters/XOrgUUID'
+      responses:
+        '200':
+          description: List of registered webhooks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Webhook'
+              example:
+                data:
+                  - uuid: "8fa85f64-5717-4562-b3fc-2c963f66afab"
+                    url: "https://myapp.example.com/webhooks/whinta"
+                    events:
+                      - message.received
+                      - message.status.update
+                    created_at: "2024-06-01T09:00:00.000Z"
+        '403':
+          description: Webhooks addon not enabled on the organization's plan
+
+    post:
+      tags: [Webhooks]
+      operationId: createWebhook
+      summary: Register a webhook
+      description: |
+        Register an HTTPS callback URL to receive real-time chat events.
+
+        Whinta sends a `POST` request to the URL each time a subscribed event fires.
+        If `events` is omitted, all three chat events are subscribed by default.
+
+        Maximum **25 webhooks** per organization.
+
+        > **Requires the Webhooks addon** to be enabled on the organization's plan.
+
+        ---
+
+        ### Webhook payload
+
+        ```json
+        {
+          "event": "message.received",
+          "organization_uuid": "a1b2c3d4-...",
+          "data": { ... }
+        }
+        ```
+
+        | Event | Fired when |
+        |---|---|
+        | `message.received` | An inbound message arrives from a contact |
+        | `message.sent` | An outbound message is sent to a contact |
+        | `message.status.update` | Delivery status changes (sent → delivered → read / failed) |
+
+        ### Responding to deliveries
+
+        Your endpoint must return a `2xx` status within **10 seconds**. Failed deliveries
+        are not automatically retried — ensure your endpoint is reliable.
+      security:
+        - bearerAuth: [webhooks:write]
+      parameters:
+        - $ref: '#/components/parameters/XOrgUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  maxLength: 500
+                  description: |
+                    Publicly accessible HTTPS endpoint. Private/localhost URLs are rejected.
+                  example: "https://myapp.example.com/webhooks/whinta"
+                events:
+                  type: array
+                  description: |
+                    Events to subscribe to. Defaults to all three chat events if omitted.
+                  items:
+                    type: string
+                    enum:
+                      - message.received
+                      - message.sent
+                      - message.status.update
+            examples:
+              all_events:
+                summary: Subscribe to all events (default)
+                value:
+                  url: "https://myapp.example.com/webhooks/whinta"
+              specific_events:
+                summary: Subscribe to specific events only
+                value:
+                  url: "https://myapp.example.com/webhooks/whinta"
+                  events:
+                    - message.received
+                    - message.status.update
+      responses:
+        '201':
+          description: Webhook registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 201
+                  message:
+                    type: string
+                    example: "Webhook registered."
+                  data:
+                    $ref: '#/components/schemas/Webhook'
+              example:
+                statusCode: 201
+                message: "Webhook registered."
+                data:
+                  uuid: "9fa85f64-5717-4562-b3fc-2c963f66afac"
+                  url: "https://myapp.example.com/webhooks/whinta"
+                  events:
+                    - message.received
+                    - message.status.update
+                  created_at: "2024-06-06T10:00:00.000Z"
+        '403':
+          description: Webhooks addon not enabled on the organization's plan
+        '422':
+          description: Webhook limit (25) exceeded or invalid URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 422
+                message: "Maximum of 25 webhooks allowed per organization."
+
+  /api/v1/webhooks/{uuid}:
+    delete:
+      tags: [Webhooks]
+      operationId: deleteWebhook
+      summary: Delete a webhook
+      description: |
+        Permanently removes a registered webhook URL. No further events will be
+        delivered to that URL after deletion.
+
+        > **Requires the Webhooks addon** to be enabled on the organization's plan.
+      security:
+        - bearerAuth: [webhooks:write]
+      parameters:
+        - $ref: '#/components/parameters/XOrgUUID'
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Webhook UUID
+      responses:
+        '200':
+          description: Webhook removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "Webhook removed."
+        '403':
+          description: Webhooks addon not enabled on the organization's plan
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Access Token API  —  Authorization: Bearer <access_token>
+  # Token is org-scoped; no X-Organization-UUID header needed.
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  # ── AT: Messages ────────────────────────────────────────────────────────────
+
+  /api/send:
+    post:
+      tags: [AT-Messages]
+      operationId: atSendTextMessage
+      summary: Send a text message
+      description: |
+        Send a plain text WhatsApp message to a phone number.
+
+        If `buttons` are included the message becomes an **interactive buttons** message.
+        The contact is auto-created if the phone number is not yet in the system.
+      security:
+        - accessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, message]
+              properties:
+                phone:
+                  type: string
+                  description: Recipient phone number with or without leading `+`. Normalized to E.164.
+                  example: "+919876543210"
+                message:
+                  type: string
+                  description: Message body text
+                  example: "Hello! How can we help you today?"
+                header:
+                  type: string
+                  description: Header text (interactive messages only)
+                  example: "Welcome"
+                footer:
+                  type: string
+                  description: Footer text (interactive messages only)
+                  example: "Reply anytime"
+                buttons:
+                  type: array
+                  description: Quick-reply buttons. Triggers interactive message type.
+                  items:
+                    type: object
+                first_name:
+                  type: string
+                  description: First name for auto-created contact
+                  example: "Priya"
+                last_name:
+                  type: string
+                  description: Last name for auto-created contact
+                  example: "Sharma"
+                email:
+                  type: string
+                  format: email
+                  description: Email for auto-created contact
+            examples:
+              plain_text:
+                summary: Plain text message
+                value:
+                  phone: "+919876543210"
+                  message: "Hi! Your order has been shipped."
+              with_buttons:
+                summary: Interactive buttons message
+                value:
+                  phone: "+919876543210"
+                  message: "Please confirm your appointment for tomorrow at 3 PM."
+                  header: "Appointment Reminder"
+                  footer: "Tap a button to respond"
+                  buttons:
+                    - type: reply
+                      reply:
+                        id: confirm
+                        title: "✅ Confirm"
+                    - type: reply
+                      reply:
+                        id: cancel
+                        title: "❌ Cancel"
+      responses:
+        '200':
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: object
+                    description: Raw success response from WhatsApp Cloud API
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/SubscriptionError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/send/template:
+    post:
+      tags: [AT-Messages]
+      operationId: atSendTemplateMessage
+      summary: Send a template message
+      description: |
+        Send a pre-approved WhatsApp message template.
+
+        Pass the template `name` and `language` exactly as registered in Meta Business Manager.
+        Use `components` to fill in body variables, header media, or dynamic URL button suffixes.
+        The `components` array follows the **WhatsApp Cloud API format** directly.
+
+        ---
+
+        ### Body variables
+
+        For templates with `{{1}}`, `{{2}}`, … placeholders in the body:
+
+        ```json
+        {
+          "type": "body",
+          "parameters": [
+            { "type": "text", "text": "John Doe" },
+            { "type": "text", "text": "ORD-12345" }
+          ]
+        }
+        ```
+
+        Parameters are substituted in order — first item replaces `{{1}}`, second replaces `{{2}}`, etc.
+
+        ---
+
+        ### Header media
+
+        For templates with an IMAGE, VIDEO, or DOCUMENT header:
+
+        ```json
+        { "type": "header", "parameters": [{ "type": "image",    "image":    { "link": "https://cdn.example.com/banner.jpg" } }] }
+        { "type": "header", "parameters": [{ "type": "video",    "video":    { "link": "https://cdn.example.com/demo.mp4" } }] }
+        { "type": "header", "parameters": [{ "type": "document", "document": { "link": "https://cdn.example.com/invoice.pdf", "filename": "Invoice.pdf" } }] }
+        ```
+
+        ---
+
+        ### Dynamic URL buttons
+
+        For buttons whose URL contains `{{1}}` (a variable suffix):
+
+        ```json
+        {
+          "type": "button",
+          "sub_type": "url",
+          "index": "0",
+          "parameters": [{ "type": "text", "text": "ORD-12345" }]
+        }
+        ```
+
+        `index` is the 0-based position of the button in the template. The `text` value is
+        appended to the button's static base URL.
+
+      security:
+        - accessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, template]
+              properties:
+                phone:
+                  type: string
+                  description: Recipient phone number with or without leading `+`. Normalized to E.164.
+                  example: "+919876543210"
+                template:
+                  type: object
+                  required: [name, language]
+                  properties:
+                    name:
+                      type: string
+                      description: Template name as registered in Meta Business Manager
+                      example: "order_confirmation"
+                    language:
+                      type: object
+                      required: [code]
+                      description: Language object
+                      properties:
+                        code:
+                          type: string
+                          description: BCP-47 language code (e.g. `en`, `en_US`, `hi`)
+                          example: "en"
+                    components:
+                      type: array
+                      description: |
+                        WhatsApp Cloud API component objects. Each object targets one
+                        part of the template: `header`, `body`, or `button`.
+                      items:
+                        type: object
+                        required: [type]
+                        properties:
+                          type:
+                            type: string
+                            enum: [header, body, button]
+                            description: Component type
+                          sub_type:
+                            type: string
+                            enum: [url]
+                            description: Required for `button` components — only `url` is supported for dynamic buttons
+                          index:
+                            type: string
+                            description: Required for `button` components — 0-based button position as a string
+                            example: "0"
+                          parameters:
+                            type: array
+                            description: Variable values for this component
+                            items:
+                              type: object
+                              required: [type]
+                              properties:
+                                type:
+                                  type: string
+                                  enum: [text, image, video, document]
+                                  description: Parameter type
+                                text:
+                                  type: string
+                                  description: Text value — used for `body` variables and dynamic URL button suffixes
+                                image:
+                                  type: object
+                                  description: Image object — used for `header` with IMAGE type
+                                  properties:
+                                    link:
+                                      type: string
+                                      format: uri
+                                      description: Publicly accessible image URL
+                                video:
+                                  type: object
+                                  description: Video object — used for `header` with VIDEO type
+                                  properties:
+                                    link:
+                                      type: string
+                                      format: uri
+                                      description: Publicly accessible video URL
+                                document:
+                                  type: object
+                                  description: Document object — used for `header` with DOCUMENT type
+                                  properties:
+                                    link:
+                                      type: string
+                                      format: uri
+                                      description: Publicly accessible document URL
+                                    filename:
+                                      type: string
+                                      description: Display filename shown in chat
+                first_name:
+                  type: string
+                  description: First name for auto-created contact
+                last_name:
+                  type: string
+                  description: Last name for auto-created contact
+                email:
+                  type: string
+                  format: email
+                  description: Email for auto-created contact
+            examples:
+              body_variables:
+                summary: Template with body variables
+                value:
+                  phone: "+919876543210"
+                  template:
+                    name: "order_confirmation"
+                    language:
+                      code: "en"
+                    components:
+                      - type: body
+                        parameters:
+                          - type: text
+                            text: "John Doe"
+                          - type: text
+                            text: "ORD-12345"
+                          - type: text
+                            text: "₹499"
+              image_header:
+                summary: Template with image header
+                value:
+                  phone: "+919876543210"
+                  template:
+                    name: "product_launch"
+                    language:
+                      code: "en"
+                    components:
+                      - type: header
+                        parameters:
+                          - type: image
+                            image:
+                              link: "https://cdn.example.com/product.jpg"
+                      - type: body
+                        parameters:
+                          - type: text
+                            text: "Summer Sale 2024"
+              document_header:
+                summary: Template with document header
+                value:
+                  phone: "+919876543210"
+                  template:
+                    name: "invoice_ready"
+                    language:
+                      code: "en"
+                    components:
+                      - type: header
+                        parameters:
+                          - type: document
+                            document:
+                              link: "https://cdn.example.com/invoice-1234.pdf"
+                              filename: "Invoice-1234.pdf"
+              dynamic_url_button:
+                summary: Template with dynamic URL button
+                value:
+                  phone: "+919876543210"
+                  template:
+                    name: "track_order"
+                    language:
+                      code: "en"
+                    components:
+                      - type: body
+                        parameters:
+                          - type: text
+                            text: "ORD-12345"
+                      - type: button
+                        sub_type: url
+                        index: "0"
+                        parameters:
+                          - type: text
+                            text: "ORD-12345"
+      responses:
+        '200':
+          description: Template message sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: object
+                    description: Raw success response from WhatsApp Cloud API
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/SubscriptionError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/send/media:
+    post:
+      tags: [AT-Messages]
+      operationId: atSendMediaMessage
+      summary: Send a media message
+      description: Send an image, video, audio, or document via a publicly accessible URL.
+      security:
+        - accessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, media_type, media_url, caption, file_name]
+              properties:
+                phone:
+                  type: string
+                  description: Recipient phone number
+                  example: "+919876543210"
+                media_type:
+                  type: string
+                  enum: [image, video, audio, document]
+                  description: Type of media to send
+                media_url:
+                  type: string
+                  format: uri
+                  description: Publicly accessible URL of the media file
+                  example: "https://cdn.example.com/invoice.pdf"
+                file_name:
+                  type: string
+                  description: Display filename (shown in chat for documents)
+                  example: "Invoice-1234.pdf"
+                caption:
+                  type: string
+                  description: Caption displayed below the media
+                  example: "Please find your invoice attached."
+                first_name:
+                  type: string
+                  description: First name for auto-created contact
+                last_name:
+                  type: string
+                  description: Last name for auto-created contact
+                email:
+                  type: string
+                  format: email
+                  description: Email for auto-created contact
+            examples:
+              send_document:
+                summary: Send a PDF invoice
+                value:
+                  phone: "+919876543210"
+                  media_type: "document"
+                  media_url: "https://cdn.example.com/invoice-1234.pdf"
+                  file_name: "Invoice-1234.pdf"
+                  caption: "Your invoice for order #1234."
+              send_image:
+                summary: Send an image
+                value:
+                  phone: "+919876543210"
+                  media_type: "image"
+                  media_url: "https://cdn.example.com/banner.jpg"
+                  file_name: "banner.jpg"
+                  caption: "Check out our latest offers!"
+      responses:
+        '200':
+          description: Media message sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: object
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/SubscriptionError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ── AT: Contacts ─────────────────────────────────────────────────────────────
+
+  /api/contacts:
+    get:
+      tags: [AT-Contacts]
+      operationId: atListContacts
+      summary: List contacts
+      description: Returns a paginated list of all contacts in the organization.
+      security:
+        - accessToken: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Results per page (max 100)
+      responses:
+        '200':
+          description: Paginated contact list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Contact'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [AT-Contacts]
+      operationId: atCreateContact
+      summary: Create a contact
+      description: |
+        Creates a new contact. Phone number must be unique within the organization.
+
+        Returns 403 if the subscription is inactive or the contact plan limit is reached.
+      security:
+        - accessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, phone]
+              properties:
+                first_name:
+                  type: string
+                  example: "Priya"
+                last_name:
+                  type: string
+                  example: "Sharma"
+                phone:
+                  type: string
+                  description: Phone number with or without leading `+`. Stored as E.164.
+                  example: "+919876543210"
+                email:
+                  type: string
+                  format: email
+                  example: "priya@example.com"
+            example:
+              first_name: "Priya"
+              last_name: "Sharma"
+              phone: "+919876543210"
+              email: "priya@example.com"
+      responses:
+        '200':
+          description: Contact created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+              example:
+                statusCode: 200
+                id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                message: "Request processed successfully"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/SubscriptionError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/contacts/{uuid}:
+    put:
+      tags: [AT-Contacts]
+      operationId: atUpdateContact
+      summary: Update a contact
+      security:
+        - accessToken: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Contact UUID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, phone]
+              properties:
+                first_name:
+                  type: string
+                  example: "Priya"
+                last_name:
+                  type: string
+                  example: "Sharma"
+                phone:
+                  type: string
+                  description: Phone number. Normalized to E.164.
+                  example: "+919876543210"
+                email:
+                  type: string
+                  format: email
+                  example: "priya@example.com"
+      responses:
+        '200':
+          description: Contact updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/SubscriptionError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    delete:
+      tags: [AT-Contacts]
+      operationId: atDeleteContact
+      summary: Delete a contact
+      description: Soft-deletes the contact. Message history is retained.
+      security:
+        - accessToken: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Contact UUID
+      responses:
+        '200':
+          description: Contact deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+              example:
+                statusCode: 200
+                id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                message: "Request processed successfully"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ── AT: Contact Groups ────────────────────────────────────────────────────────
+
+  /api/contact-groups:
+    get:
+      tags: [AT-Contact Groups]
+      operationId: atListContactGroups
+      summary: List contact groups
+      description: Returns a paginated list of all contact groups in the organization.
+      security:
+        - accessToken: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Results per page (max 100)
+      responses:
+        '200':
+          description: Paginated contact group list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ContactGroup'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+              example:
+                data:
+                  - uuid: "5fa85f64-5717-4562-b3fc-2c963f66afa8"
+                    name: "VIP Customers"
+                    created_at: "2024-06-01 10:00:00"
+                    updated_at: "2024-06-01 10:00:00"
+                  - uuid: "6fa85f64-5717-4562-b3fc-2c963f66afa9"
+                    name: "Newsletter Subscribers"
+                    created_at: "2024-06-02 09:00:00"
+                    updated_at: "2024-06-02 09:00:00"
+                meta:
+                  current_page: 1
+                  per_page: 10
+                  total: 2
+                  last_page: 1
+                  from: 1
+                  to: 2
+                  path: "https://app.whinta.com/api/contact-groups"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [AT-Contact Groups]
+      operationId: atCreateContactGroup
+      summary: Create a contact group
+      description: |
+        Creates a new contact group. The `name` must be unique within the organization.
+
+        Returns 403 if the subscription is inactive.
+      security:
+        - accessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  description: Group name — must be unique within the organization
+                  example: "VIP Customers"
+            example:
+              name: "VIP Customers"
+      responses:
+        '200':
+          description: Contact group created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+              example:
+                statusCode: 200
+                id: "5fa85f64-5717-4562-b3fc-2c963f66afa8"
+                message: "Request processed successfully"
+        '400':
+          description: Validation error or duplicate group name
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 400
+                message: "The given data was invalid."
+        '403':
+          $ref: '#/components/responses/SubscriptionError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/contact-groups/{uuid}:
+    put:
+      tags: [AT-Contact Groups]
+      operationId: atUpdateContactGroup
+      summary: Update a contact group
+      description: Updates the name of an existing contact group. The new name must be unique within the organization.
+      security:
+        - accessToken: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Contact group UUID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  description: New group name — must be unique within the organization
+                  example: "Premium Customers"
+      responses:
+        '200':
+          description: Contact group updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+        '400':
+          description: Validation error or duplicate name
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/SubscriptionError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    delete:
+      tags: [AT-Contact Groups]
+      operationId: atDeleteContactGroup
+      summary: Delete a contact group
+      description: |
+        Soft-deletes the contact group. Contacts that belong to this group will have
+        their `contact_group_id` set to null — the contacts themselves are not deleted.
+      security:
+        - accessToken: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Contact group UUID
+      responses:
+        '200':
+          description: Contact group deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+              example:
+                statusCode: 200
+                id: "5fa85f64-5717-4562-b3fc-2c963f66afa8"
+                message: "Request processed successfully"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ── AT: Automated Replies ─────────────────────────────────────────────────────
+
+  /api/canned-replies:
+    get:
+      tags: [AT-Automated Replies]
+      operationId: atListAutomatedReplies
+      summary: List automated replies
+      description: Returns a paginated list of all automated reply rules in the organization.
+      security:
+        - accessToken: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Results per page (max 100)
+      responses:
+        '200':
+          description: Paginated automated reply list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AutomatedReply'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+              example:
+                data:
+                  - uuid: "7fa85f64-5717-4562-b3fc-2c963f66afaa"
+                    name: "Greeting reply"
+                    trigger: "hello"
+                    match_criteria: "contains"
+                    metadata:
+                      type: "text"
+                      data:
+                        text: "Hi! Welcome to Whinta. How can I help you?"
+                    updated_at: "2024-06-01 10:00:00"
+                meta:
+                  current_page: 1
+                  per_page: 10
+                  total: 1
+                  last_page: 1
+                  from: 1
+                  to: 1
+                  path: "https://app.whinta.com/api/canned-replies"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [AT-Automated Replies]
+      operationId: atCreateAutomatedReply
+      summary: Create an automated reply
+      description: |
+        Creates a new automated reply rule.
+
+        When an inbound message matches `trigger` (based on `match_criteria`),
+        Whinta automatically sends the configured response.
+
+        **Response types:**
+        - `text` — pass the reply text in `response`
+        - `image` — upload the image file as `response` (multipart/form-data)
+        - `audio` — upload the audio file as `response` (multipart/form-data)
+
+        Returns 403 if the subscription is inactive or the automated reply plan limit is reached.
+      security:
+        - accessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, trigger, match_criteria, response_type, response]
+              properties:
+                name:
+                  type: string
+                  description: Internal label for this rule
+                  example: "Greeting reply"
+                trigger:
+                  type: string
+                  description: Keyword that triggers the auto reply
+                  example: "hello"
+                match_criteria:
+                  type: string
+                  enum: [exact match, contains]
+                  description: |
+                    - `exact match` — the inbound message must be exactly the trigger
+                    - `contains` — the inbound message just needs to contain the trigger
+                  example: "contains"
+                response_type:
+                  type: string
+                  enum: [text, image, audio]
+                  description: Type of response to send
+                  example: "text"
+                response:
+                  type: string
+                  description: |
+                    - For `text`: the reply message text
+                    - For `image` / `audio`: upload the file via `multipart/form-data`
+                  example: "Hi! Welcome to Whinta. How can I help you?"
+            example:
+              name: "Greeting reply"
+              trigger: "hello"
+              match_criteria: "contains"
+              response_type: "text"
+              response: "Hi! Welcome to Whinta. How can I help you today?"
+      responses:
+        '200':
+          description: Automated reply created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+              example:
+                statusCode: 200
+                id: "7fa85f64-5717-4562-b3fc-2c963f66afaa"
+                message: "Request processed successfully"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/SubscriptionError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/canned-replies/{uuid}:
+    put:
+      tags: [AT-Automated Replies]
+      operationId: atUpdateAutomatedReply
+      summary: Update an automated reply
+      security:
+        - accessToken: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Automated reply UUID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, trigger, match_criteria, response_type, response]
+              properties:
+                name:
+                  type: string
+                  example: "Greeting reply updated"
+                trigger:
+                  type: string
+                  example: "hi"
+                match_criteria:
+                  type: string
+                  enum: [exact match, contains]
+                  example: "contains"
+                response_type:
+                  type: string
+                  enum: [text, image, audio]
+                  example: "text"
+                response:
+                  type: string
+                  description: Reply text (for text type) or file upload (for image/audio)
+                  example: "Hello! How may I assist you?"
+      responses:
+        '200':
+          description: Automated reply updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/SubscriptionError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    delete:
+      tags: [AT-Automated Replies]
+      operationId: atDeleteAutomatedReply
+      summary: Delete an automated reply
+      description: Soft-deletes the automated reply rule. It will no longer fire for incoming messages.
+      security:
+        - accessToken: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Automated reply UUID
+      responses:
+        '200':
+          description: Automated reply deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+              example:
+                statusCode: 200
+                id: "7fa85f64-5717-4562-b3fc-2c963f66afaa"
+                message: "Request processed successfully"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ── AT: Templates ─────────────────────────────────────────────────────────────
+
+  /api/templates:
+    get:
+      tags: [AT-Templates]
+      operationId: atListTemplates
+      summary: List templates
+      description: |
+        Returns all approved WhatsApp message templates for the organization.
+
+        The `metadata` field contains the full template definition including `components`
+        (HEADER, BODY, FOOTER, BUTTONS), `category`, and `language`.
+      security:
+        - accessToken: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Results per page (max 100)
+      responses:
+        '200':
+          description: Paginated template list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Template'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+              example:
+                data:
+                  - uuid: "4fa85f64-5717-4562-b3fc-2c963f66afa7"
+                    metadata:
+                      name: "order_confirmation"
+                      language: "en"
+                      category: "UTILITY"
+                      components:
+                        - type: "BODY"
+                          text: "Hi {{1}}, your order {{2}} is confirmed. Amount: ₹{{3}}"
+                    updated_at: "2024-05-20 08:00:00"
+                meta:
+                  current_page: 1
+                  per_page: 10
+                  total: 8
+                  last_page: 1
+                  from: 1
+                  to: 8
+                  path: "https://app.whinta.com/api/templates"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
